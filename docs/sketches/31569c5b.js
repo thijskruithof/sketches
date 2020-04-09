@@ -1,9 +1,11 @@
 
+var title = "31569c5b";
+
 var myrng;
 var redraw = true;
 var iteration = 0;
 
-https://coolors.co/ffffff-87ff65-1a1d25-033f63-ffb045
+// https://coolors.co/ffffff-87ff65-1a1d25-033f63-ffb045
 var colors = [
 	[0,38,38],
 	[14,71,73],
@@ -58,13 +60,13 @@ function getIntersection(line0, line1)
 }
 
 
-
-
 function setup() 
 {
 	var cnv = createCanvas(windowWidth, windowHeight);
 	cnv.style('display', 'block');
 	cnv.position(0, 0);	
+
+	document.title += " | " + title;
 }
 
 function windowResized() 
@@ -212,13 +214,21 @@ function drawQuad(tl,tr,bl,br, iter)
 	 	line(xLines[i].a.x, xLines[i].a.y, xLines[i].b.x, xLines[i].b.y);	
 }
 
+var shuffled = false;
+
 function mousePressed()
 {
-	if (!redraw)
+	if (!shuffled)
 	{
 		redraw = true;
+		shuffled = true;
 		iteration++;
 	}
+}
+
+function mouseReleased()
+{
+	shuffled = false;
 }
 
 function draw() 

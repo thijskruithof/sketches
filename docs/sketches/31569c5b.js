@@ -1,5 +1,8 @@
-
+// Info
 var title = "31569c5b";
+var date = "April 9, 2020";
+
+
 
 var myrng;
 var redraw = true;
@@ -67,6 +70,8 @@ function setup()
 	cnv.position(0, 0);	
 
 	document.title += " | " + title;
+	document.getElementById("sketchTitle").innerText = title;
+	document.getElementById("sketchDate").innerText = date;
 }
 
 function windowResized() 

@@ -4,6 +4,7 @@
 <head>
   <meta charset="utf-8">
   <link rel="shortcut icon" type="image/x-icon" href="favicon.png">
+  <link href="https://fonts.googleapis.com/css?family=Raleway&display=swap" rel="stylesheet">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Sketch Labs</title>
   <script src="libs/p5.min.js"></script>
@@ -15,10 +16,53 @@
     {
       touch-action: none;  
     }
+    div
+    {
+      margin:20px;
+      padding:16px;
+      width: auto;
+      height: auto;
+      background-color: white;
+      position: relative;
+      float: right;
+      z-index:1000;
+      font-family: 'Raleway', sans-serif;
+      user-select:none;
+    }
+    #sketchTitle
+    {      
+      font-size: 30px;
+      font-weight: 600;
+      float: right;
+    }
+    #sketchDate
+    {      
+      font-size: 16px;
+      font-weight: 500;
+      float: right;
+    }   
+    #sketchAuthor
+    {      
+      font-size: 13px;
+      font-weight: 400;
+      float: right;
+    }      
+    #sketchCode
+    {      
+      font-size: 13px;
+      font-weight: 400;
+      float: right;
+    }      
   </style>
 </head>
 
 <body>
+  <div>
+    <span id="sketchTitle">TITLE</span><br/>
+    <span id="sketchDate">DATE</span><br/>
+    <span id="sketchAuthor">by <a href="http://www.thijskruithof.nl" target="_blank">Thijs Kruithof</a></span><br/>
+    <span id="sketchCode"><a href="https://github.com/thijskruithof/sketches/tree/master/docs/sketches" target="_blank">GitHub</a></span>
+  </div>
 </body>
 
 </html>

@@ -121,7 +121,7 @@ function drawQuad(tl,tr,bl,br, iter)
 
 	if (iter == 0)
 	{
-		minSize = 40*pixelDensity();
+		minSize = 40;
 	}
 	else
 	{

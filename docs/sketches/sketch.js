@@ -126,8 +126,11 @@ function drawQuad(tl,tr,bl,br, iter)
 		var prefCount = 3.0;		
 		var sizeX = Math.min((tr.x-tl.x)/prefCount,(br.x-bl.x)/prefCount);
 		var sizeY = Math.min((br.y-tr.y)/prefCount,(bl.y-tl.y)/prefCount);
-		minSize = Math.min(sizeX,sizeY);	
+		minSize = Math.min(sizeX,sizeY);
 	}
+
+	if (minSize <= 10)
+		return;
 
 
 	var numX = Math.floor( Math.min((tr.x-tl.x)/minSize,(br.x-bl.x)/minSize));

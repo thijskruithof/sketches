@@ -1,24 +1,43 @@
 
 var myrng;
+var redraw = true;
 
-function setup() 
-{
-	var cnv = createCanvas(windowWidth, windowHeight);
-	cnv.style('display', 'block');
-	cnv.position(0, 0);	
+https://coolors.co/ffffff-87ff65-1a1d25-033f63-ffb045
+var colors = [
+	[135,255,101],
+	[26,29,37],
+	[3,63,99],
+	[255,176,69]
+];
 
-	background(255, 255, 255);
-}
-
-function windowResized() 
-{
-	resizeCanvas(windowWidth, windowHeight);
-	background(255, 0, 200);
-}
 
 function randRange(min, max)
 {
 	return myrng.quick()*(max-min) + min;
+}
+
+// https://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript
+function hashCode(str) 
+{
+	var hash = 0, i, chr;
+	for (i = 0; i < str.length; i++) 
+	{
+		chr   = str.charCodeAt(i);
+		hash  = ((hash << 5) - hash) + chr;
+		hash |= 0; // Convert to 32bit integer
+	}
+	return hash;
+}
+
+function clamp(v, min, max)
+{
+	return Math.max(Math.min(v,max),min);
+}
+
+function remap(v, imin, imax, omin, omax)
+{
+	var a = clamp( (v-imin)/(imax-imin), 0.0, 1.0);
+	return omin + a*(omax-omin);
 }
 
 function getIntersection(line0, line1)
@@ -38,73 +57,133 @@ function getIntersection(line0, line1)
 }
 
 
-function draw() 
+
+
+function setup() 
 {
-	clear();
+	var cnv = createCanvas(windowWidth, windowHeight);
+	cnv.style('display', 'block');
+	cnv.position(0, 0);	
+}
 
-	var yLines = []; // vertical
-	var xLines = []; // horizontal
+function windowResized() 
+{
+	redraw = true;
+	resizeCanvas(windowWidth, windowHeight);
+}
 
 
-	// vertical
-	myrng = new Math.seedrandom('hello');
-	var x = -50;
-	while (x < windowWidth+50)
+
+function drawQuad(tl,tr,bl,br, iter)
+{
+	var gridPoints = [];	
+	var xLines = [];
+	var yLines = [];
+
+	var prefCount = Math.floor(26 / (4*iter+1));
+
+	var sizeX = Math.min((tr.x-tl.x)/prefCount,(br.x-bl.x)/prefCount);
+	var sizeY = Math.min((br.y-tr.y)/prefCount,(bl.y-tl.y)/prefCount);
+	var minSize = Math.min(sizeX,sizeY);
+
+	var numX = Math.floor( Math.min((tr.x-tl.x)/minSize,(br.x-bl.x)/minSize));
+	var numY = Math.floor( Math.min((br.y-tr.y)/minSize,(bl.y-tl.y)/minSize));
+
+	// Horizontal lines
+	for (var iy = 0; iy<numY; ++iy)
 	{
-		var x2 = x + randRange(-10,30)* (windowHeight/800);
-		var aa = new Victor(x,0);
-		var bb = new Victor(x2,windowHeight)
-		yLines.push({a:aa, b:bb});
-		x += randRange(20,30);
+		var fy = iy/numY;		
+		var fyLeft = clamp(fy + randRange(-0.02, 0.04), 0, 1.0);
+		var fyRight = clamp(fy + randRange(-0.02, 0.04), 0, 1.0);
+		var lineLeft = tl.clone().mix(bl, fyLeft);
+		var lineRight = tr.clone().mix(br, fyRight);
+		xLines.push({a:lineLeft,b:lineRight});		
 	}
 
-	// horizontal
-	myrng = new Math.seedrandom('hello');
-	var y = -50;
-	while (y < windowHeight+50)
+	// Vertical lines
+	for (var ix = 0; ix<numX; ++ix)
 	{
-		var y2 = y + randRange(-10,30)*(windowWidth/800.0);
-		var aa = new Victor(0, y);
-		var bb = new Victor(windowWidth, y2)
-
-		xLines.push({a:aa, b:bb});
-		y += randRange(20,30);
+		var fx = ix/numX;		
+		var fxTop = clamp(fx + randRange(-0.02, 0.04), 0, 1.0);
+		var fxBottom = clamp(fx + randRange(-0.02, 0.04), 0, 1.0);		
+		var lineTop = tl.clone().mix(tr, fxTop);
+		var lineBottom = bl.clone().mix(br, fxBottom);
+		yLines.push({a:lineTop,b:lineBottom});		
 	}	
 
-	var gridPoints = [];	
-	for (var ix=0; ix<xLines.length; ++ix)
+	// Grid points
+	for (var iy = 0; iy<numY; ++iy)
 	{
-		for (var iy=0; iy<yLines.length; ++iy)
+		for (var ix = 0; ix<numX; ++ix)
 		{
-			var xLine = xLines[ix];
-			var yLine = yLines[iy];
-
-			// Calculate intersection between the two lines
-			var p = getIntersection(xLine, yLine);
+			var p = getIntersection(xLines[iy],yLines[ix]);
 			gridPoints.push(p);
 		}
 	}
 
 
-	stroke(0,0,0);	
-	// for (var i=0; i<yLines.length; ++i)
-	// 	line(yLines[i].a.x, yLines[i].a.y, yLines[i].b.x, yLines[i].b.y);
-	// for (var i=0; i<xLines.length; ++i)
-	// 	line(xLines[i].a.x, xLines[i].a.y, xLines[i].b.x, xLines[i].b.y);
+	// Squares
+	noStroke();
 
-	for (var iy=0; iy<xLines.length-1; ++iy)
+	for (var iy=0; iy<numY-1; ++iy)
 	{
-		for (var ix=0; ix<yLines.length-1; ++ix)
+		for (var ix=0; ix<numX-1; ++ix)
 		{
-			var a0 = gridPoints[ix+iy*yLines.length];
-			var a1 = gridPoints[ix+iy*yLines.length+1];
-			var a2 = gridPoints[ix+(iy+1)*yLines.length];
-			var a3 = gridPoints[ix+(iy+1)*yLines.length+1];
+			var style = randRange(0.0,1.0);
 
-			line(a0.x, a0.y, a1.x, a1.y);
-			line(a1.x, a1.y, a3.x, a3.y);
-			line(a3.x, a3.y, a2.x, a2.y);
-			line(a2.x, a2.y, a0.x, a0.y);			
+			if (style < 0.7)
+				continue;
+
+			var a0 = gridPoints[ix+iy*numX];
+			var a1 = gridPoints[ix+iy*numX+1];
+			var a2 = gridPoints[ix+(iy+1)*numX];
+			var a3 = gridPoints[ix+(iy+1)*numX+1];
+
+			if (style > 0.9 && iter == 0)
+			{
+				drawQuad(a0,a1,a2,a3,iter+1);
+			}
+			else 
+			{
+				// https://coolors.co/app/ffffff-2a3439-edae49-d1495b-2a9df4
+				var colIndex = Math.floor(remap(style, 0.7,0.9, 0.0, 3.999));
+				var color = colors[colIndex];
+				fill(color[0],color[1],color[2]);
+				quad(a0.x,a0.y,a1.x,a1.y,a3.x,a3.y,a2.x,a2.y);			
+			}
 		}	
 	}
+
+	stroke(0,0,0);	
+
+	for (var i=0; i<yLines.length; ++i)
+		line(yLines[i].a.x, yLines[i].a.y, yLines[i].b.x, yLines[i].b.y);
+	for (var i=0; i<xLines.length; ++i)
+	 	line(xLines[i].a.x, xLines[i].a.y, xLines[i].b.x, xLines[i].b.y);	
+
+}
+
+
+
+
+function draw() 
+{
+	if (!redraw)
+		return;
+
+	redraw = false;
+	myrng = new Math.seedrandom('hello');
+	
+	background(255, 255, 255);
+	clear();
+
+	drawQuad(
+		new Victor(0,0), 
+		new Victor(windowWidth, 0),
+		new Victor(0, windowHeight),
+		new Victor(windowWidth, windowHeight),
+		0
+	);
+
+	
 }

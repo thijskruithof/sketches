@@ -23,25 +23,34 @@ function randRange(min, max)
 
 function draw() 
 {
-	myrng = new Math.seedrandom('hello');
-
 	clear();
 
-	var yLines = [];
-	var xLines = [];
+	var yLines = []; // vertical
+	var xLines = []; // horizontal
 
+
+	// vertical
+	myrng = new Math.seedrandom('hello');
 	var x = 0;
 	while (x < windowWidth)
 	{
-		var x2 = x + randRange(-10,30);
-		yLines.push({a:new Victor(x,0), b:new Victor(x2,windowHeight)});
+		var x2 = x + randRange(-10,30)* (windowHeight/800);
+		var aa = new Victor(x,0);
+		var bb = new Victor(x2,windowHeight)
+		yLines.push({a:aa, b:bb});
 		x += randRange(20,30);
 	}
+
+	// horizontal
+	myrng = new Math.seedrandom('hello');
 	var y = 0;
 	while (y < windowHeight)
 	{
-		var y2 = y + randRange(-10,30);
-		xLines.push({a:new Victor(0,y), b:new Victor(windowWidth,y2)});
+		var y2 = y + randRange(-10,30)*(windowWidth/800.0);
+		var aa = new Victor(0, y);
+		var bb = new Victor(windowWidth, y2)
+
+		xLines.push({a:aa, b:bb});
 		y += randRange(20,30);
 	}	
 

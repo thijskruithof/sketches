@@ -1,6 +1,7 @@
 
 var myrng;
 var redraw = true;
+var iteration = 0;
 
 https://coolors.co/ffffff-87ff65-1a1d25-033f63-ffb045
 var colors = [
@@ -114,14 +115,20 @@ function drawQuad(tl,tr,bl,br, iter)
 	var xLines = [];
 	var yLines = [];
 
-	var prefCount = Math.floor(26 / (7*iter+1));
-
-	var sizeX = Math.min((tr.x-tl.x)/prefCount,(br.x-bl.x)/prefCount);
-	var sizeY = Math.min((br.y-tr.y)/prefCount,(bl.y-tl.y)/prefCount);
-	var minSize = Math.min(sizeX,sizeY);
+	var minSize;
 
 	if (iter == 0)
+	{
 		minSize = 40*pixelDensity();
+	}
+	else
+	{
+		var prefCount = 3.0;		
+		var sizeX = Math.min((tr.x-tl.x)/prefCount,(br.x-bl.x)/prefCount);
+		var sizeY = Math.min((br.y-tr.y)/prefCount,(bl.y-tl.y)/prefCount);
+		minSize = Math.min(sizeX,sizeY);	
+	}
+
 
 	var numX = Math.floor( Math.min((tr.x-tl.x)/minSize,(br.x-bl.x)/minSize));
 	var numY = Math.floor( Math.min((br.y-tr.y)/minSize,(bl.y-tl.y)/minSize));
@@ -200,11 +207,16 @@ function drawQuad(tl,tr,bl,br, iter)
 		line(yLines[i].a.x, yLines[i].a.y, yLines[i].b.x, yLines[i].b.y);
 	for (var i=0; i<xLines.length; ++i)
 	 	line(xLines[i].a.x, xLines[i].a.y, xLines[i].b.x, xLines[i].b.y);	
-
 }
 
-
-
+function mousePressed()
+{
+	if (!redraw)
+	{
+		redraw = true;
+		iteration++;
+	}
+}
 
 function draw() 
 {
@@ -212,7 +224,7 @@ function draw()
 		return;
 
 	redraw = false;
-	myrng = new Math.seedrandom('hello');
+	myrng = new Math.seedrandom('hello'+iteration.toString());
 	
 	background(255, 255, 255);
 	clear();

@@ -4,10 +4,10 @@ var redraw = true;
 
 https://coolors.co/ffffff-87ff65-1a1d25-033f63-ffb045
 var colors = [
-	[135,255,101],
-	[26,29,37],
-	[3,63,99],
-	[255,176,69]
+	[0,38,38],
+	[14,71,73],
+	[149,198,35],
+	[229,88,18]
 ];
 
 
@@ -73,6 +73,40 @@ function windowResized()
 }
 
 
+function quadStriped(tl,tr,bl,br)
+{
+	var num = 6;
+	for (var i=0; i<num; i+=2)
+	{
+		var f0 = i/num;
+		var f1 = (i+1)/num;
+		var top0 = tl.clone().mix(tr, f0);
+		var top1 = tl.clone().mix(tr, f1);
+		var left0 = tl.clone().mix(bl, f0);
+		var left1 = tl.clone().mix(bl, f1);
+		var bottom0 = bl.clone().mix(br, f0);
+		var bottom1 = bl.clone().mix(br, f1);
+		var right0 = tr.clone().mix(br, f0);
+		var right1 = tr.clone().mix(br, f1);
+
+		quad(top0.x,top0.y,top1.x,top1.y,left1.x,left1.y,left0.x,left0.y);
+		quad(right0.x,right0.y,right1.x,right1.y,bottom1.x,bottom1.y,bottom0.x,bottom0.y);
+	}
+}
+
+function quadEllipse(tl,tr,bl,br)
+{
+	var tcenter = tl.clone().mix(tr, 0.5);
+	var bcenter = bl.clone().mix(br, 0.5);
+	var center = tcenter.mix(bcenter, 0.5);
+	
+	var w = Math.min(tr.x-tl.x, br.x-bl.x);
+	var h = Math.min(bl.y-tl.y, br.y-tr.y);
+	var s = Math.min(w,h);
+	ellipseMode(CENTER);
+	ellipse(center.x,center.y,s*0.5,s*0.5);
+}
+
 
 function drawQuad(tl,tr,bl,br, iter)
 {
@@ -80,11 +114,14 @@ function drawQuad(tl,tr,bl,br, iter)
 	var xLines = [];
 	var yLines = [];
 
-	var prefCount = Math.floor(26 / (4*iter+1));
+	var prefCount = Math.floor(26 / (7*iter+1));
 
 	var sizeX = Math.min((tr.x-tl.x)/prefCount,(br.x-bl.x)/prefCount);
 	var sizeY = Math.min((br.y-tr.y)/prefCount,(bl.y-tl.y)/prefCount);
 	var minSize = Math.min(sizeX,sizeY);
+
+	if (iter == 0)
+		minSize = 40*pixelDensity();
 
 	var numX = Math.floor( Math.min((tr.x-tl.x)/minSize,(br.x-bl.x)/minSize));
 	var numY = Math.floor( Math.min((br.y-tr.y)/minSize,(bl.y-tl.y)/minSize));
@@ -92,9 +129,9 @@ function drawQuad(tl,tr,bl,br, iter)
 	// Horizontal lines
 	for (var iy = 0; iy<numY; ++iy)
 	{
-		var fy = iy/numY;		
-		var fyLeft = clamp(fy + randRange(-0.02, 0.04), 0, 1.0);
-		var fyRight = clamp(fy + randRange(-0.02, 0.04), 0, 1.0);
+		var fy = iy/(numY-1);		
+		var fyLeft = clamp(fy + randRange(-0.02, 0.01), 0, 1.0);
+		var fyRight = clamp(fy + randRange(-0.02, 0.03), 0, 1.0);
 		var lineLeft = tl.clone().mix(bl, fyLeft);
 		var lineRight = tr.clone().mix(br, fyRight);
 		xLines.push({a:lineLeft,b:lineRight});		
@@ -103,7 +140,7 @@ function drawQuad(tl,tr,bl,br, iter)
 	// Vertical lines
 	for (var ix = 0; ix<numX; ++ix)
 	{
-		var fx = ix/numX;		
+		var fx = ix/(numX-1);		
 		var fxTop = clamp(fx + randRange(-0.02, 0.04), 0, 1.0);
 		var fxBottom = clamp(fx + randRange(-0.02, 0.04), 0, 1.0);		
 		var lineTop = tl.clone().mix(tr, fxTop);
@@ -123,33 +160,36 @@ function drawQuad(tl,tr,bl,br, iter)
 
 
 	// Squares
-	noStroke();
-
 	for (var iy=0; iy<numY-1; ++iy)
 	{
 		for (var ix=0; ix<numX-1; ++ix)
 		{
 			var style = randRange(0.0,1.0);
 
-			if (style < 0.7)
-				continue;
-
 			var a0 = gridPoints[ix+iy*numX];
 			var a1 = gridPoints[ix+iy*numX+1];
 			var a2 = gridPoints[ix+(iy+1)*numX];
 			var a3 = gridPoints[ix+(iy+1)*numX+1];
 
-			if (style > 0.9 && iter == 0)
+			if (style > 0.8 && iter == 0)
 			{
 				drawQuad(a0,a1,a2,a3,iter+1);
 			}
-			else 
+			else if (style > 0.4)
 			{
+				noStroke();
 				// https://coolors.co/app/ffffff-2a3439-edae49-d1495b-2a9df4
-				var colIndex = Math.floor(remap(style, 0.7,0.9, 0.0, 3.999));
+				var colIndex = Math.floor(randRange(0.0,3.999));
 				var color = colors[colIndex];
 				fill(color[0],color[1],color[2]);
-				quad(a0.x,a0.y,a1.x,a1.y,a3.x,a3.y,a2.x,a2.y);			
+				if (style > 0.6)
+					// Solid
+					quad(a0.x,a0.y,a1.x,a1.y,a3.x,a3.y,a2.x,a2.y);			
+				else if (style > 0.5)
+					// Diagonal striped
+					quadStriped(a0,a1,a2,a3);
+				else
+					quadEllipse(a0,a1,a2,a3);
 			}
 		}	
 	}
@@ -183,7 +223,5 @@ function draw()
 		new Victor(0, windowHeight),
 		new Victor(windowWidth, windowHeight),
 		0
-	);
-
-	
+	);	
 }

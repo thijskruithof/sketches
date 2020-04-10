@@ -15,53 +15,52 @@
     body 
     {
       touch-action: none;  
+      margin:0px;
     }
     div
     {
-      margin:20px;
-      padding:16px;
-      width: auto;
+      margin:0px;
+      padding:10px;
+      width: 100%;
       height: auto;
       background-color: white;
       position: relative;
-      float: right;
+      float: top;
       z-index:1000;
       font-family: 'Raleway', sans-serif;
-      user-select:none;
+      user-select: none;
+      display: flex;      
+      align-items: center;
     }
     #sketchTitle
     {      
       font-size: 30px;
       font-weight: 600;
-      float: right;
+      float: left;
+      margin-right: 10px;
     }
     #sketchDate
     {      
       font-size: 16px;
       font-weight: 500;
-      float: right;
+      float: left;
+      margin-right: 8px;
     }   
     #sketchAuthor
     {      
       font-size: 13px;
       font-weight: 400;
-      float: right;
-    }      
-    #sketchCode
-    {      
-      font-size: 13px;
-      font-weight: 400;
-      float: right;
-    }      
+      float: left;
+      margin-right: 8px;
+    }     
   </style>
 </head>
 
 <body>
   <div>
-    <span id="sketchTitle">TITLE</span><br/>
-    <span id="sketchDate">DATE</span><br/>
-    <span id="sketchAuthor">by <a href="http://www.thijskruithof.nl" target="_blank">Thijs Kruithof</a></span><br/>
-    <span id="sketchCode"><a href="https://github.com/thijskruithof/sketches/tree/master/docs/sketches" target="_blank">GitHub</a></span>
+    <span id="sketchTitle">TITLE</span>
+    <span id="sketchDate">DATE</span>
+    <span id="sketchAuthor">by <a href="http://www.thijskruithof.nl" target="_blank">Thijs Kruithof</a>, source on <a href="https://github.com/thijskruithof/sketches/tree/master/docs/sketches" target="_blank">GitHub</a>.</span>
   </div>
 </body>
 

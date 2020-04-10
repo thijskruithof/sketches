@@ -72,6 +72,14 @@ function setup()
 	document.title += " | " + title;
 	document.getElementById("sketchTitle").innerText = title;
 	document.getElementById("sketchDate").innerText = date;
+
+	if (window.DeviceOrientationEvent) 
+		window.addEventListener('deviceorientation',orientationChanged);  
+}
+
+function orientationChanged(e) 
+{
+	console.log("Orientation changed!");
 }
 
 function windowResized() 
@@ -229,11 +237,13 @@ function mousePressed()
 		shuffled = true;
 		iteration++;
 	}
+	return false;
 }
 
 function mouseReleased()
 {
 	shuffled = false;
+	return false;
 }
 
 function draw() 
@@ -242,6 +252,7 @@ function draw()
 		return;
 
 	redraw = false;
+
 	myrng = new Math.seedrandom('hello'+iteration.toString());
 	
 	background(255, 255, 255);

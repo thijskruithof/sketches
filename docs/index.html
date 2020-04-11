@@ -10,7 +10,72 @@
   <script src="libs/p5.min.js"></script>
   <script src="libs/victor.min.js"></script>
   <script src="libs/seedrandom.min.js"></script>
-  <script src="sketches/31569c5b.js"></script>  
+
+  <script type="text/javascript"> 
+
+    var sketches = [
+      { id: "fbc39eb8", date: "April 11, 2020" },
+      { id: "31569c5b", date: "April 9, 2020" }
+    ];
+
+    var currentSketchIndex = -1;
+
+    function getUrlVars() 
+    {
+      var vars = {};
+      var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+          vars[key] = value;
+      });
+      return vars;
+    }
+
+    function getUrlParam(parameter, defaultvalue)
+    {
+      var urlparameter = defaultvalue;
+      if(window.location.href.indexOf(parameter) > -1)
+      {
+        urlparameter = getUrlVars()[parameter];
+      }
+      return urlparameter;
+    }
+
+    function onPageLoad()
+    {
+      if (currentSketchIndex >= 0)
+      {
+        var sketch = sketches[currentSketchIndex];
+
+        // Update title bar
+        document.getElementById("sketchTitle").innerText = sketch.id;
+        document.getElementById("sketchDate").innerText = sketch.date;    
+      }
+    }
+
+    var sketchStr = getUrlParam("sketch", null);
+
+    if (sketchStr != null)
+    {
+      for (var i=0; i<sketches.length; ++i)
+      {
+        if (sketches[i].id == sketchStr)
+        {
+          currentSketchIndex = i;
+          break;
+        }
+      }
+    }
+
+    if (currentSketchIndex >= 0)
+    {
+      var sketch = sketches[currentSketchIndex];
+
+      // Open sketch's js file
+      var fileref=document.createElement('script');
+      fileref.setAttribute("type","text/javascript");
+      fileref.setAttribute("src", "sketches/" + sketch.id + ".js");
+      document.head.appendChild(fileref);  
+    }
+  </script>   
 
   <style>
     body 
@@ -59,8 +124,7 @@
   </style>
 </head>
 
-<body>
-
+<body onload="onPageLoad();">
   <div>
     <span id="sketchTitle">TITLE</span>
     <span id="sketchDate">DATE</span>

@@ -1,18 +1,7 @@
-// Info
-var title = "31569c5b";
-var date = "April 9, 2020";
-
-
 
 var myrng;
-var redrawplease = true;
 var iteration = 0;
-var bla = 0;
-var rs = "";
 
-var canv;
-var ow = 0;
-var oh = 0;
 
 // https://coolors.co/ffffff-87ff65-1a1d25-033f63-ffb045
 var colors = [
@@ -75,11 +64,6 @@ function setup()
 	//cnv.style('display', 'block');
 	cnv.position(0, 0);	
 	cnv.style('position', 'absolute');
-	canv = cnv;
-
-
-	document.getElementById("sketchTitle").innerText = title;
-	document.getElementById("sketchDate").innerText = date; 
 }
 
 
@@ -227,7 +211,6 @@ function mousePressed()
 {
 	if (!shuffled)
 	{
-		redrawplease = true;
 		shuffled = true;
 		iteration++;
 	}

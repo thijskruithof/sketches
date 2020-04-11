@@ -5,8 +5,14 @@ var date = "April 9, 2020";
 
 
 var myrng;
-var redraw = true;
+var redrawplease = true;
 var iteration = 0;
+var bla = 0;
+var rs = "";
+
+var canv;
+var ow = 0;
+var oh = 0;
 
 // https://coolors.co/ffffff-87ff65-1a1d25-033f63-ffb045
 var colors = [
@@ -65,27 +71,15 @@ function getIntersection(line0, line1)
 
 function setup() 
 {
-	var cnv = createCanvas(windowWidth, windowHeight);
-	cnv.style('display', 'block');
+	var cnv = createCanvas(window.innerWidth, window.innerHeight);
+	//cnv.style('display', 'block');
 	cnv.position(0, 0);	
+	cnv.style('position', 'absolute');
+	canv = cnv;
 
-	document.title += " | " + title;
+
 	document.getElementById("sketchTitle").innerText = title;
-	document.getElementById("sketchDate").innerText = date;
-
-	if (window.DeviceOrientationEvent) 
-		window.addEventListener('deviceorientation',orientationChanged);  
-}
-
-function orientationChanged(e) 
-{
-	console.log("Orientation changed!");
-}
-
-function windowResized() 
-{
-	redraw = true;
-	resizeCanvas(windowWidth, windowHeight);
+	document.getElementById("sketchDate").innerText = date; 
 }
 
 
@@ -233,7 +227,7 @@ function mousePressed()
 {
 	if (!shuffled)
 	{
-		redraw = true;
+		redrawplease = true;
 		shuffled = true;
 		iteration++;
 	}
@@ -248,21 +242,19 @@ function mouseReleased()
 
 function draw() 
 {
-	if (!redraw)
-		return;
-
-	redraw = false;
+	// Resize canvas if needed.
+	if (canvas.width/pixelDensity() != window.innerWidth || canvas.height/pixelDensity() != window.innerHeight)
+	 	resizeCanvas(window.innerWidth, window.innerHeight, false);
 
 	myrng = new Math.seedrandom('hello'+iteration.toString());
 	
 	background(255, 255, 255);
-	clear();
 
 	drawQuad(
 		new Victor(0,0), 
-		new Victor(windowWidth, 0),
-		new Victor(0, windowHeight),
-		new Victor(windowWidth, windowHeight),
+		new Victor(window.innerWidth, 0),
+		new Victor(0, window.innerHeight),
+		new Victor(window.innerWidth, window.innerHeight),
 		0
-	);	
+	);		
 }

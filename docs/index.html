@@ -48,6 +48,23 @@
         // Update title bar
         document.getElementById("sketchTitle").innerText = sketch.id;
         document.getElementById("sketchDate").innerText = sketch.date;    
+
+        // Prev
+        if (currentSketchIndex >= 1)
+        {
+          document.getElementById("prevA").href = "http://localhost:8080/?sketch=" + sketches[currentSketchIndex-1].id;
+        }
+        else
+        {
+          document.getElementById("prevA").href = "#";
+        }
+          
+
+        // Next
+        if (currentSketchIndex < sketches.length-1)
+          document.getElementById("nextA").href = "http://localhost:8080/?sketch=" + sketches[currentSketchIndex+1].id;
+        else
+          document.getElementById("nextA").href = "#";          
       }
     }
 
@@ -75,6 +92,18 @@
       fileref.setAttribute("src", "sketches/" + sketch.id + ".js");
       document.head.appendChild(fileref);  
     }
+    // else
+    // {
+    //   for (var i=0; i<sketches.length; ++i)
+    //   {
+    //     var sketch = sketches[i];
+
+    //     var a=document.createElement('a');
+    //     a.setAttribute("href", "sketches/" + sketch.id + ".js");       
+    //     a.value = sketch.id;
+    //     document.body.appendChild(a);  
+    //   }
+    // }
   </script>   
 
   <style>
@@ -121,6 +150,13 @@
       float: left;
       margin-right: 8px;
     }     
+    #sketchNextPrev
+    {      
+      font-size: 13px;
+      font-weight: 400;
+      float: right;
+      margin-right: 8px;
+    }        
   </style>
 </head>
 
@@ -129,6 +165,9 @@
     <span id="sketchTitle">TITLE</span>
     <span id="sketchDate">DATE</span>
     <span id="sketchAuthor">by <a href="http://www.thijskruithof.nl" target="_blank">Thijs Kruithof</a>, source on <a href="https://github.com/thijskruithof/sketches/tree/master/docs/sketches" target="_blank">GitHub</a>.</span>
+    <span id="sketchNextPrev"><a id="homeA" href="/">Home</a></span>
+    <span id="sketchNextPrev"><a id="prevA" href="#">Prev</a></span>
+    <span id="sketchNextPrev"><a id="nextA" href="#">Next</a></span>
   </div>
 </body>
 

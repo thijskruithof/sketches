@@ -51,6 +51,15 @@ function setup()
 	cnv.style('touch-action', 'none');
 }
 
+function projX(x,z)
+{
+	return x + (x - 0.5*gRenderWidth)*0.5*z;
+}
+
+function projY(y,z)
+{
+	return y + (y - 0.5*gRenderHeight)*0.5*z;
+}
 
 var scrollX = 0;
 
@@ -62,33 +71,72 @@ function draw()
 	
 	background(255, 255, 255);
 
-	noStroke();
+	stroke(0,0,0);
 
-	scrollX -= gRenderDeltaTime * 100.0;
+	scrollX += gRenderDeltaTime * 100.0;
 
 	var barW = 50;
-	var h = gRenderHeight * 0.7;
-	var hw = gRenderWidth * 0.5;
-	var persp = 0.5;
 
-	if (scrollX < -barW*2)
-		scrollX += barW*2;
 
+	if (scrollX >= 0)
+		scrollX -= barW*2;
+
+	// Stripes
 	for (var x=scrollX; x<gRenderWidth; x+=barW*2)
 	{
-		// Vert
+		var h = gRenderHeight * (0.75 - 0.10*Math.cos(x/400.0 + gRenderTime*0.2));
+		var z = 0.7 + 0.3*Math.cos(x/400.0 + gRenderTime*0.05);
+
+		// Vert 
 		fill(255,0,0);		
-		rect(x,0,barW, h);		
+
+		quad(
+			projX(x,0.0),projY(0,0.0), 
+			projX(x+barW,0.0),projY(0,0.0), 
+			projX(x+barW,0), projY(h, 0.0),
+			projX(x,0), projY(h, 0.0));
 
 		// Horz
 		fill(255,90,90);		
 		quad(
-			x,h, 
-			x+barW,h, 
-			x+barW+(x+barW-hw)*persp, gRenderHeight,
-			x+(x-hw)*persp, gRenderHeight);
+			projX(x,0),projY(h,0), 
+			projX(x+barW,0),projY(h,0), 
+			projX(x+barW,z), projY(h, z),
+			projX(x,z), projY(h, z));
 
+		// Vert
+		fill(255,0,0);
+
+		quad(
+			projX(x,z),projY(h,z), 
+			projX(x+barW,z),projY(h,z), 
+			projX(x+barW,z), projY(h*2, z),
+			projX(x,z), projY(h*2, z));			
 	}	
+
+	// var backquads = [];
+	// var frontquads = [];
+
+	// // Ribbon
+	// var segmentW = 20;	
+	// for (var x=0; x<gRenderWidth; x+=segmentW)
+	// {
+	// 	var y0 = gRenderHeight*0.5 + gRenderHeight*0.3*Math.sin(x/100 + 0.0);
+	// 	var y1 = gRenderHeight*0.5 + gRenderHeight*0.3*Math.sin((x+segmentW)/100 + 0.0);
+
+	// 	var a0 = new Victor(projX(x,0.2),projY(y0,0.2));
+	// 	var a1 = new Victor(projX(x+segmentW, 0.2),projY(y1,0.2));
+	// 	var a2 = new Victor(projX(x+segmentW, 0.6),projY(y1,0.6));
+	// 	var a3 = new Victor(projX(x, 0.6),projY(y0,0.6));
+
+	// 	var c = a0.clone().subtract(a1).cross(a2.clone().subtract(a1));
+
+	// 	if (c < 0)
+	// 		frontquads.push([a0,a1,a2,a3]);
+	// 	else
+	// 		backquads.push([a0,a1,a2,a3]);
+	// }
+	
 
 	postDraw();
 }

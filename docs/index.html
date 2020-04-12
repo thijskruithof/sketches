@@ -4,8 +4,8 @@
 <head>
   <meta charset="utf-8">
   <link rel="shortcut icon" type="image/x-icon" href="favicon.png">
-  <link href="https://fonts.googleapis.com/css?family=Raleway&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css?family=Nunito&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css?family=Nunito:200,400,700,900&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/7008f17fd7.js" crossorigin="anonymous"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
   <title>Sketch Labs</title>
   <script src="libs/p5.min.js"></script>
@@ -241,7 +241,7 @@
       display:block;
       padding: 0px;
     }
-    #navigationBar
+    .navigationBar
     {
       left:0px;
       top:0px;
@@ -253,42 +253,51 @@
       z-index:1000;
       font-family: 'Nunito', sans-serif;
       user-select: none;
-      display: flex;      
+      display: flex;
       align-items: center;
+      vertical-align: center;
     }
     .sketchTitle
     {      
       color: #d4002f;
       font-size: 30px;
       font-weight: 600;
-      float: left;
       margin: 8px;
     }
     .sketchDate
     {      
       font-size: 16px;
       font-weight: 500;
-      float: left;
-      margin-right: 8px;
+      margin-right: 8px;           
     }   
-    .sketchAuthor
-    {      
-      font-size: 13px;
-      font-weight: 400;
-      float: left;
+    .navigationBar .buttonsBox
+    {
       margin-right: 8px;
-    }     
+      flex-grow: 1;
+      display: flex;
+      justify-content:flex-end;
+    } 
+    .navigationBar .buttonsBox a 
+    {
+      border-radius: 8px;
+      background-color: #a0a0a0;
+      padding:2px 6px 2px 6px; 
+      color: white;
+    }
+    .navigationBar .buttonsBox a:hover
+    {
+      background-color: #d4002f;
+    }
     .sketchNextPrev, .sketchNextPrevDisabled, .sketchRecord
-    {      
-      font-size: 13px;
+    {            
+      font-size: 22px;
       font-weight: 400;
-      float: right;
       padding:2px;
     }  
     .sketchNextPrevDisabled
     {
       cursor: not-allowed;
-      opacity: 0.5;
+      opacity: 0.1;
       text-decoration: none;
     }  
     .frontPage
@@ -310,11 +319,13 @@
       color:white;
       width:fit-content;
       height:auto;
+      font-weight: 200;  
     }
     .frontPage .title
     {       
-        font-size:80px;
-        font-weight: 1000;  
+        font-size: 80px;
+        font-weight: 700;  
+        font-style: normal;        
         color: #ff0039;
         width:fit-content;
         margin: 0px;        
@@ -350,17 +361,23 @@
       font-weight: 200;  
       font-size: 13px;
     }
+    a:link,a:visited,a:active,a:hover
+    {
+      color: #ff0039;
+    }
   </style>  
 </head>
 
 <body onload="onPageLoad();">
-  <div id="navigationBar">
+  <div id="navigationBar" class="navigationBar">
     <span id="sketchTitle" class="sketchTitle">TITLE</span>
     <span id="sketchDate" class="sketchDate">DATE</span>
-    <span id="sketchHome" class="sketchNextPrev"><a id="homeA" href="?">Home</a></span>
-    <span id="sketchPrev" class="sketchNextPrev"><a id="prevA" href="#">Prev</a></span>
-    <span id="sketchNext" class="sketchNextPrev"><a id="nextA" href="#">Next</a></span>
-    <span id="sketchRecord" class="sketchRecord"><a id="recordA" href="#" onclick="startRecord();">Capture thumb</a></span>
+    <div class="buttonsBox">
+      <span id="sketchHome" class="sketchNextPrev"><a id="homeA" href="?"><i class="fas fa-home"></i></a></span>
+      <span id="sketchPrev" class="sketchNextPrev"><a id="prevA" href="#"><i class="fas fa-arrow-circle-left"></i></a></span>
+      <span id="sketchNext" class="sketchNextPrev"><a id="nextA" href="#"><i class="fas fa-arrow-circle-right"></i></a></span>
+      <span id="sketchRecord" class="sketchRecord"><a id="recordA" href="#" onclick="startRecord();"><i class="fas fa-video"></i></a></span> 
+    </div>
   </div>
 
   <div id="frontPage" class="frontPage"> 
@@ -371,7 +388,7 @@
       <p>
       Here's my totally random collection of visual experiments in JavaScript. Most of these have only been tested on Chrome.<br/>        
       <br/>
-      If you like to know more about me or get in touch please check out my portfolio page.<br/>
+      If you like to know more about me or get in touch please check out <a href="http://glow.inque.org" target="_blank">my portfolio page <i class="fas fa-link"></i></a>.<br/>
       <br/>
       </p>
       <div id="tilesBox" class="tilesBox">

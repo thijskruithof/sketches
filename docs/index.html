@@ -21,10 +21,10 @@
       { id: "31569c5b", date: "April 9, 2020" }
     ];
 
-    var cRecordingWidth = 512;
-    var cRecordingHeight = 512;
+    var cRecordingRenderSize = 512;
+    var cRecordingOutputSize = 128;
     var cRecordingFps = 30;
-    var cRecordingNumFrames = cRecordingFps*4;
+    var cRecordingNumFrames = cRecordingFps*4;   
 
   
     // Globals
@@ -132,8 +132,8 @@
     {
       gRenderDeltaTime = !gIsRecording ? (deltaTime/1000.0) : (1.0/cRecordingFps);
 
-      gRenderWidth = !gIsRecording ? window.innerWidth : cRecordingWidth;
-      gRenderHeight = !gIsRecording ? window.innerHeight : cRecordingHeight;
+      gRenderWidth = !gIsRecording ? window.innerWidth : cRecordingRenderSize;
+      gRenderHeight = !gIsRecording ? window.innerHeight : cRecordingRenderSize;
 
       // Resize canvas if needed.
     	if (canvas.width/pixelDensity() != gRenderWidth || canvas.height/pixelDensity() != gRenderHeight)
@@ -151,9 +151,9 @@
 
       // Downscale the canvas to 128x128
       var captureContext = captureCanvas.getContext('2d');
-      captureContext.width = 128; 
-      captureContext.height = 128;
-      captureContext.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0,0, 128,128);
+      captureContext.width = cRecordingOutputSize; 
+      captureContext.height = cRecordingOutputSize;
+      captureContext.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0,0, cRecordingOutputSize,cRecordingOutputSize);
 
       if (gNumFramesRecorded == 0)
         capturer.start();
@@ -267,7 +267,7 @@
     <span id="sketchHome" class="sketchNextPrev"><a id="homeA" href="?">Home</a></span>
     <span id="sketchPrev" class="sketchNextPrev"><a id="prevA" href="#">Prev</a></span>
     <span id="sketchNext" class="sketchNextPrev"><a id="nextA" href="#">Next</a></span>
-    <span id="sketchRecord" class="sketchRecord"><a id="recordA" href="#" onclick="startRecord();">Capture</a></span>
+    <span id="sketchRecord" class="sketchRecord"><a id="recordA" href="#" onclick="startRecord();">Capture thumb</a></span>
   </div>
 </body>
 

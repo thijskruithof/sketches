@@ -61,6 +61,8 @@ function setup()
 	var cnv = createCanvas(window.innerWidth, window.innerHeight);
 	cnv.position(0, 0);	
 	cnv.style('position', 'absolute');
+	// Disable any touch controls
+	cnv.style('touch-action', 'none');
 }
 
 
@@ -211,13 +213,13 @@ function mousePressed()
 		shuffled = true;
 		iteration++;
 	}
-	return false;
+	// return false;
 }
 
 function mouseReleased()
 {
 	shuffled = false;
-	return false;
+	// return false;
 }
 
 function draw() 

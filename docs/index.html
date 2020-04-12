@@ -69,22 +69,26 @@
       {
         var sketch = cSketches[currentSketchIndex];
 
-        // Disable any touch controls
-        //document.body.setAttribute('touch-action', 'none');
-
         // Update title bar
         document.getElementById("sketchTitle").innerText = sketch.id;
         document.getElementById("sketchDate").innerText = sketch.date;    
 
         // Prev
         var prevA = document.getElementById("prevA");
-        prevA.href = (currentSketchIndex >= 1) ? ("http://localhost:8080/?sketch=" + cSketches[currentSketchIndex-1].id) : "#";
+        prevA.href = (currentSketchIndex >= 1) ? ("?sketch=" + cSketches[currentSketchIndex-1].id) : "#";
         prevA.setAttribute('class', (currentSketchIndex >= 1) ? "sketchNextPrev" : "sketchNextPrevDisabled");         
 
         // Next
         var nextA = document.getElementById("nextA");
-        nextA.href = (currentSketchIndex < cSketches.length-1) ? ("http://localhost:8080/?sketch=" + cSketches[currentSketchIndex+1].id) : "#";
+        nextA.href = (currentSketchIndex < cSketches.length-1) ? ("?sketch=" + cSketches[currentSketchIndex+1].id) : "#";
         nextA.setAttribute('class', (currentSketchIndex < cSketches.length-1) ? "sketchNextPrev" : "sketchNextPrevDisabled");       
+        
+        // Hide the frontPage
+        document.getElementById("frontPage").style.display = "none";
+
+        
+
+        //canvas.addEventListener("mousedown", function(e) {return false;});
       }
       // currentSketchIndex == -1?
       else 
@@ -243,7 +247,7 @@
       top:0px;
       width: 100%;
       height: auto;
-      background-color: white;
+      background-color: #fffffff0;
       position: absolute;
       float: top;
       z-index:1000;

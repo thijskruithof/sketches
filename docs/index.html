@@ -21,8 +21,8 @@
       { id: "31569c5b", date: "April 9, 2020" }
     ];
 
-    var cRecordingWidth = 540;
-    var cRecordingHeight = 540;
+    var cRecordingWidth = 512;
+    var cRecordingHeight = 512;
     var cRecordingFps = 30;
     var cRecordingNumFrames = cRecordingFps*4;
 
@@ -39,6 +39,7 @@
     var currentSketchIndex = -1;
 
     var capturer;
+    var captureCanvas;
     var preRecordingRenderTime;
 
 
@@ -116,6 +117,8 @@
           verbose: false,
           name: cSketches[currentSketchIndex].id
           });
+
+        captureCanvas = document.createElement('canvas');
       }
 
       preRecordingRenderTime = gRenderTime;
@@ -146,10 +149,16 @@
 
       console.log("Recording frame.");
 
+      // Downscale the canvas to 128x128
+      var captureContext = captureCanvas.getContext('2d');
+      captureContext.width = 128; 
+      captureContext.height = 128;
+      captureContext.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0,0, 128,128);
+
       if (gNumFramesRecorded == 0)
         capturer.start();
 
-      capturer.capture(canvas);
+      capturer.capture(captureCanvas);
       gNumFramesRecorded++;
 
       // Done?

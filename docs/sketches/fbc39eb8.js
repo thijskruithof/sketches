@@ -89,3 +89,13 @@ function draw()
 
 	postDraw();
 }
+
+function mousePressed()
+{
+	return false;
+}
+
+function mouseReleased()
+{
+	return false;
+}

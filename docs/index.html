@@ -5,6 +5,7 @@
   <meta charset="utf-8">
   <link rel="shortcut icon" type="image/x-icon" href="favicon.png">
   <link href="https://fonts.googleapis.com/css?family=Raleway&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css?family=Nunito&display=swap" rel="stylesheet">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
   <title>Sketch Labs</title>
   <script src="libs/p5.min.js"></script>
@@ -68,6 +69,9 @@
       {
         var sketch = cSketches[currentSketchIndex];
 
+        // Disable any touch controls
+        //document.body.setAttribute('touch-action', 'none');
+
         // Update title bar
         document.getElementById("sketchTitle").innerText = sketch.id;
         document.getElementById("sketchDate").innerText = sketch.date;    
@@ -75,8 +79,7 @@
         // Prev
         var prevA = document.getElementById("prevA");
         prevA.href = (currentSketchIndex >= 1) ? ("http://localhost:8080/?sketch=" + cSketches[currentSketchIndex-1].id) : "#";
-        prevA.setAttribute('class', (currentSketchIndex >= 1) ? "sketchNextPrev" : "sketchNextPrevDisabled");
-          
+        prevA.setAttribute('class', (currentSketchIndex >= 1) ? "sketchNextPrev" : "sketchNextPrevDisabled");         
 
         // Next
         var nextA = document.getElementById("nextA");
@@ -86,14 +89,42 @@
       // currentSketchIndex == -1?
       else 
       {
+        // Build front page
+        var tilesBoxDiv = document.getElementById("tilesBox");
+
+
         for (var i=0; i<cSketches.length; ++i)
         {
           var sketch = cSketches[i];
 
-          var a=document.createElement('a');
-          a.setAttribute("href", "?sketch=" + sketch.id);
-          a.innerHTML = sketch.id + "<br/>";
-          document.body.appendChild(a);  
+          // <div class="tile">
+          // <img src="thumbs/31569c5b.gif"/>
+          // <div class="caption">31569c5b</div>
+          // <div class="date">April 9, 2020</div>
+          // </div>
+
+          var tileDiv = document.createElement('div');
+          tileDiv.setAttribute('class', 'tile');
+          
+          var a = document.createElement('a');
+          a.href = "?sketch=" + sketch.id;
+          tileDiv.appendChild(a);
+
+          var img = document.createElement('img');
+          img.src = "thumbs/" + sketch.id + ".gif";
+          a.appendChild(img);
+
+          var captionDiv = document.createElement('div');
+          captionDiv.setAttribute('class', 'caption');
+          captionDiv.innerHTML = sketch.id;
+          tileDiv.appendChild(captionDiv);
+
+          var dateDiv = document.createElement('div');
+          dateDiv.setAttribute('class', 'date');
+          dateDiv.innerHTML = sketch.date;
+          tileDiv.appendChild(dateDiv);
+
+          tilesBoxDiv.appendChild(tileDiv);
         }
 
         // Hide the navigation bar
@@ -151,8 +182,8 @@
 
       // Downscale the canvas to 128x128
       var captureContext = captureCanvas.getContext('2d');
-      captureContext.width = cRecordingOutputSize; 
-      captureContext.height = cRecordingOutputSize;
+      captureCanvas.width = cRecordingOutputSize; 
+      captureCanvas.height = cRecordingOutputSize;
       captureContext.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0,0, cRecordingOutputSize,cRecordingOutputSize);
 
       if (gNumFramesRecorded == 0)
@@ -202,12 +233,11 @@
   <style>
     body 
     {
-      touch-action: none;  
       margin:0px;
       display:block;
       padding: 0px;
     }
-    div
+    #navigationBar
     {
       left:0px;
       top:0px;
@@ -217,13 +247,14 @@
       position: absolute;
       float: top;
       z-index:1000;
-      font-family: 'Raleway', sans-serif;
+      font-family: 'Nunito', sans-serif;
       user-select: none;
       display: flex;      
       align-items: center;
     }
     .sketchTitle
     {      
+      color: #d4002f;
       font-size: 30px;
       font-weight: 600;
       float: left;
@@ -256,18 +287,96 @@
       opacity: 0.5;
       text-decoration: none;
     }  
-  </style>
+    .frontPage
+    {
+      padding:60px;
+      font-family: 'Nunito', sans-serif;
+    }
+    .frontPage .headerBox
+    {
+      padding:0px;
+      margin:0px;       
+      margin-bottom: 50px;
+    }
+    .frontPage .header 
+    {
+      border-radius: 6px;
+      background: #000000;
+      padding:1px 4px 1px 4px;
+      color:white;
+      width:fit-content;
+      height:auto;
+    }
+    .frontPage .title
+    {       
+        font-size:80px;
+        font-weight: 1000;  
+        color: #d4002f;
+        width:fit-content;
+        margin: 0px;        
+        line-height: 100%;
+    }
+    .tilesBox
+    {    
+      margin: 0;
+      display: grid;
+      grid-gap: 20px;
+      grid-template-columns: repeat(auto-fill, 130px); 
+    }
+   
+    .tile
+    {
+      padding: 0px;
+      width: 132px;
+    }
+    .tile img
+    {
+      border: black;
+      border-style: solid;
+      border-width: 2px;
+    }
+    .tile .caption
+    {
+      text-align: center;
+      font-weight: 600;  
+    }
+    .tile .date
+    {
+      text-align: center;
+      font-weight: 200;  
+      font-size: 13px;
+    }
+  </style>  
 </head>
 
 <body onload="onPageLoad();">
   <div id="navigationBar">
     <span id="sketchTitle" class="sketchTitle">TITLE</span>
     <span id="sketchDate" class="sketchDate">DATE</span>
-    <span id="sketchAuthor" class="sketchAuthor">by <a href="http://www.thijskruithof.nl" target="_blank">Thijs Kruithof</a>, source on <a href="https://github.com/thijskruithof/sketches/tree/master/docs/sketches" target="_blank">GitHub</a>.</span>
     <span id="sketchHome" class="sketchNextPrev"><a id="homeA" href="?">Home</a></span>
     <span id="sketchPrev" class="sketchNextPrev"><a id="prevA" href="#">Prev</a></span>
     <span id="sketchNext" class="sketchNextPrev"><a id="nextA" href="#">Next</a></span>
     <span id="sketchRecord" class="sketchRecord"><a id="recordA" href="#" onclick="startRecord();">Capture thumb</a></span>
+  </div>
+
+  <div id="frontPage" class="frontPage"> 
+      <div class="headerBox">
+        <div class="header">Thijs Kruithof's</div>
+        <div class="title">Sketch Labs</div>
+      </div> 
+      <p>
+      Here's my totally random collection of visual experiments in JavaScript. Most of these have only been tested on Chrome.<br/>        
+      <br/>
+      If you like to know more about me or get in touch please check out my portfolio page.<br/>
+      <br/>
+      </p>
+      <div id="tilesBox" class="tilesBox">
+<!--        <div class="tile">
+          <img src="thumbs/31569c5b.gif"/>
+          <div class="caption">31569c5b</div>
+          <div class="date">April 9, 2020</div>
+        </div> -->
+      </div>
   </div>
 </body>
 

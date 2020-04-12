@@ -213,13 +213,11 @@ function mousePressed()
 		shuffled = true;
 		iteration++;
 	}
-	// return false;
 }
 
 function mouseReleased()
 {
-	shuffled = false;
-	// return false;
+	shuffled = false;	
 }
 
 function draw() 

@@ -82,13 +82,9 @@
         var nextA = document.getElementById("nextA");
         nextA.href = (currentSketchIndex < cSketches.length-1) ? ("?sketch=" + cSketches[currentSketchIndex+1].id) : "#";
         nextA.setAttribute('class', (currentSketchIndex < cSketches.length-1) ? "sketchNextPrev" : "sketchNextPrevDisabled");       
-        
-        // Hide the frontPage
-        document.getElementById("frontPage").style.display = "none";
 
-        
-
-        //canvas.addEventListener("mousedown", function(e) {return false;});
+        // Show the navigation bar
+        document.getElementById("navigationBar").style.display = "flex";
       }
       // currentSketchIndex == -1?
       else 
@@ -131,8 +127,8 @@
           tilesBoxDiv.appendChild(tileDiv);
         }
 
-        // Hide the navigation bar
-        document.getElementById("navigationBar").style.display = "none";
+        // Show the frontPage
+        document.getElementById("frontPage").style.display = "block";
       }
     }
 
@@ -253,7 +249,7 @@
       z-index:1000;
       font-family: 'Nunito', sans-serif;
       user-select: none;
-      display: flex;
+      display: none;
       align-items: center;
       vertical-align: center;
     }
@@ -266,7 +262,8 @@
     }
     .sketchDate
     {      
-      font-size: 16px;
+      font-weight: 200;  
+      font-size: 13px;
       font-weight: 500;
       margin-right: 8px;           
     }   
@@ -302,6 +299,7 @@
     }  
     .frontPage
     {
+      display: none;
       padding:60px;
       font-family: 'Nunito', sans-serif;
     }

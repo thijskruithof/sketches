@@ -81,8 +81,10 @@ function draw()
 	if (scrollX >= 0)
 		scrollX -= barW*2;
 
+	var pts0 = [];	
+
 	// Stripes
-	for (var x=scrollX; x<gRenderWidth; x+=barW*2)
+	for (var x=scrollX; x<gRenderWidth+2*barW; x+=barW*2)
 	{
 		var h = gRenderHeight * (0.75 - 0.10*Math.cos(x/400.0 + gRenderTime*0.2));
 		var z = 0.7 + 0.3*Math.cos(x/400.0 + gRenderTime*0.05);
@@ -113,30 +115,6 @@ function draw()
 			projX(x+barW,z), projY(h*2, z),
 			projX(x,z), projY(h*2, z));			
 	}	
-
-	// var backquads = [];
-	// var frontquads = [];
-
-	// // Ribbon
-	// var segmentW = 20;	
-	// for (var x=0; x<gRenderWidth; x+=segmentW)
-	// {
-	// 	var y0 = gRenderHeight*0.5 + gRenderHeight*0.3*Math.sin(x/100 + 0.0);
-	// 	var y1 = gRenderHeight*0.5 + gRenderHeight*0.3*Math.sin((x+segmentW)/100 + 0.0);
-
-	// 	var a0 = new Victor(projX(x,0.2),projY(y0,0.2));
-	// 	var a1 = new Victor(projX(x+segmentW, 0.2),projY(y1,0.2));
-	// 	var a2 = new Victor(projX(x+segmentW, 0.6),projY(y1,0.6));
-	// 	var a3 = new Victor(projX(x, 0.6),projY(y0,0.6));
-
-	// 	var c = a0.clone().subtract(a1).cross(a2.clone().subtract(a1));
-
-	// 	if (c < 0)
-	// 		frontquads.push([a0,a1,a2,a3]);
-	// 	else
-	// 		backquads.push([a0,a1,a2,a3]);
-	// }
-	
 
 	postDraw();
 }

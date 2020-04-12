@@ -10,15 +10,37 @@
   <script src="libs/p5.min.js"></script>
   <script src="libs/victor.min.js"></script>
   <script src="libs/seedrandom.min.js"></script>
+  <script src="libs/ccapture.all.min.js"></script>
+  <script src="libs/gif.worker.js"></script>
 
   <script type="text/javascript"> 
 
-    var sketches = [
+    // Constants
+    var cSketches = [
       { id: "fbc39eb8", date: "April 11, 2020" },
       { id: "31569c5b", date: "April 9, 2020" }
     ];
 
+    var cRecordingWidth = 540;
+    var cRecordingHeight = 540;
+    var cRecordingFps = 30;
+    var cRecordingNumFrames = cRecordingFps*4;
+
+  
+    // Globals
+    var gRenderWidth;
+    var gRenderHeight;    
+    var gIsRecording = false;
+    var gNumFramesRecorded = 0;
+    var gRenderTime = 0;
+    var gRenderDeltaTime = 0; // in seconds!
+
+    // Locals
     var currentSketchIndex = -1;
+
+    var capturer;
+    var preRecordingRenderTime;
+
 
     function getUrlVars() 
     {
@@ -43,7 +65,7 @@
     {
       if (currentSketchIndex >= 0)
       {
-        var sketch = sketches[currentSketchIndex];
+        var sketch = cSketches[currentSketchIndex];
 
         // Update title bar
         document.getElementById("sketchTitle").innerText = sketch.id;
@@ -51,21 +73,21 @@
 
         // Prev
         var prevA = document.getElementById("prevA");
-        prevA.href = (currentSketchIndex >= 1) ? ("http://localhost:8080/?sketch=" + sketches[currentSketchIndex-1].id) : "#";
+        prevA.href = (currentSketchIndex >= 1) ? ("http://localhost:8080/?sketch=" + cSketches[currentSketchIndex-1].id) : "#";
         prevA.setAttribute('class', (currentSketchIndex >= 1) ? "sketchNextPrev" : "sketchNextPrevDisabled");
           
 
         // Next
         var nextA = document.getElementById("nextA");
-        nextA.href = (currentSketchIndex < sketches.length-1) ? ("http://localhost:8080/?sketch=" + sketches[currentSketchIndex+1].id) : "#";
-        nextA.setAttribute('class', (currentSketchIndex < sketches.length-1) ? "sketchNextPrev" : "sketchNextPrevDisabled");       
+        nextA.href = (currentSketchIndex < cSketches.length-1) ? ("http://localhost:8080/?sketch=" + cSketches[currentSketchIndex+1].id) : "#";
+        nextA.setAttribute('class', (currentSketchIndex < cSketches.length-1) ? "sketchNextPrev" : "sketchNextPrevDisabled");       
       }
       // currentSketchIndex == -1?
       else 
       {
-        for (var i=0; i<sketches.length; ++i)
+        for (var i=0; i<cSketches.length; ++i)
         {
-          var sketch = sketches[i];
+          var sketch = cSketches[i];
 
           var a=document.createElement('a');
           a.setAttribute("href", "?sketch=" + sketch.id);
@@ -78,13 +100,77 @@
       }
     }
 
+    function startRecord()
+    {
+      if (gIsRecording)
+        return;
+
+      console.log("Starting recording.");
+
+      if (!capturer)
+      {
+        capturer = new CCapture( {
+          framerate: cRecordingFps,          
+          format: 'gif',
+          workersPath: './libs/',
+          verbose: false,
+          name: cSketches[currentSketchIndex].id
+          });
+      }
+
+      preRecordingRenderTime = gRenderTime;
+      gNumFramesRecorded = 0;
+      gRenderTime = 0;
+      gIsRecording = true;
+    }
+
+
+    function preDraw()
+    {
+      gRenderDeltaTime = !gIsRecording ? (deltaTime/1000.0) : (1.0/cRecordingFps);
+
+      gRenderWidth = !gIsRecording ? window.innerWidth : cRecordingWidth;
+      gRenderHeight = !gIsRecording ? window.innerHeight : cRecordingHeight;
+
+      // Resize canvas if needed.
+    	if (canvas.width/pixelDensity() != gRenderWidth || canvas.height/pixelDensity() != gRenderHeight)
+	 	    resizeCanvas(gRenderWidth, gRenderHeight, false);
+    }
+
+    function postDraw()
+    {
+      gRenderTime += gRenderDeltaTime;
+
+      if (!gIsRecording)
+        return;
+
+      console.log("Recording frame.");
+
+      if (gNumFramesRecorded == 0)
+        capturer.start();
+
+      capturer.capture(canvas);
+      gNumFramesRecorded++;
+
+      // Done?
+      if (gNumFramesRecorded >= cRecordingNumFrames)
+      {
+        gIsRecording = false;
+        capturer.stop();
+        capturer.save();
+        console.log("Saving recording.");
+        gRenderTime = preRecordingRenderTime;
+      }      
+    }
+
+
     var sketchStr = getUrlParam("sketch", null);
 
     if (sketchStr != null)
     {
-      for (var i=0; i<sketches.length; ++i)
+      for (var i=0; i<cSketches.length; ++i)
       {
-        if (sketches[i].id == sketchStr)
+        if (cSketches[i].id == sketchStr)
         {
           currentSketchIndex = i;
           break;
@@ -94,7 +180,7 @@
 
     if (currentSketchIndex >= 0)
     {
-      var sketch = sketches[currentSketchIndex];
+      var sketch = cSketches[currentSketchIndex];
 
       // Open sketch's js file
       var fileref=document.createElement('script');
@@ -148,7 +234,7 @@
       float: left;
       margin-right: 8px;
     }     
-    .sketchNextPrev, .sketchNextPrevDisabled
+    .sketchNextPrev, .sketchNextPrevDisabled, .sketchRecord
     {      
       font-size: 13px;
       font-weight: 400;
@@ -160,7 +246,7 @@
       cursor: not-allowed;
       opacity: 0.5;
       text-decoration: none;
-    }      
+    }  
   </style>
 </head>
 
@@ -172,6 +258,7 @@
     <span id="sketchHome" class="sketchNextPrev"><a id="homeA" href="?">Home</a></span>
     <span id="sketchPrev" class="sketchNextPrev"><a id="prevA" href="#">Prev</a></span>
     <span id="sketchNext" class="sketchNextPrev"><a id="nextA" href="#">Next</a></span>
+    <span id="sketchRecord" class="sketchRecord"><a id="recordA" href="#" onclick="startRecord();">Capture</a></span>
   </div>
 </body>
 

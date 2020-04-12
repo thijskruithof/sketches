@@ -1,7 +1,5 @@
-
 var myrng;
 var iteration = 0;
-
 
 // https://coolors.co/ffffff-87ff65-1a1d25-033f63-ffb045
 var colors = [
@@ -61,7 +59,6 @@ function getIntersection(line0, line1)
 function setup() 
 {
 	var cnv = createCanvas(window.innerWidth, window.innerHeight);
-	//cnv.style('display', 'block');
 	cnv.position(0, 0);	
 	cnv.style('position', 'absolute');
 }
@@ -225,9 +222,10 @@ function mouseReleased()
 
 function draw() 
 {
-	// Resize canvas if needed.
-	if (canvas.width/pixelDensity() != window.innerWidth || canvas.height/pixelDensity() != window.innerHeight)
-	 	resizeCanvas(window.innerWidth, window.innerHeight, false);
+	preDraw();
+
+	if (gIsRecording)
+		iteration = Math.floor(gRenderTime/0.5);
 
 	myrng = new Math.seedrandom('hello'+iteration.toString());
 	
@@ -235,9 +233,11 @@ function draw()
 
 	drawQuad(
 		new Victor(0,0), 
-		new Victor(window.innerWidth, 0),
-		new Victor(0, window.innerHeight),
-		new Victor(window.innerWidth, window.innerHeight),
+		new Victor(gRenderWidth, 0),
+		new Victor(0, gRenderHeight),
+		new Victor(gRenderWidth, gRenderHeight),
 		0
 	);		
+
+	postDraw();
 }

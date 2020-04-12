@@ -43,7 +43,6 @@ function remap(v, imin, imax, omin, omax)
 
 function setup() 
 {
-	console.log("SKETCH");
 	var cnv = createCanvas(window.innerWidth, window.innerHeight);
 	cnv.position(0, 0);	
 	cnv.style('position', 'absolute');
@@ -54,9 +53,7 @@ var scrollX = 0;
 
 function draw() 
 {
-	// Resize canvas if needed.
-	if (canvas.width/pixelDensity() != window.innerWidth || canvas.height/pixelDensity() != window.innerHeight)
-	 	resizeCanvas(window.innerWidth, window.innerHeight, false);
+	preDraw();
 
 	//myrng = new Math.seedrandom('hello'+iteration.toString());
 	
@@ -64,17 +61,17 @@ function draw()
 
 	noStroke();
 
-	scrollX -= deltaTime * 0.1;
+	scrollX -= gRenderDeltaTime * 100.0;
 
 	var barW = 50;
-	var h = window.innerHeight * 0.7;
-	var hw = window.innerWidth * 0.5;
+	var h = gRenderHeight * 0.7;
+	var hw = gRenderWidth * 0.5;
 	var persp = 0.5;
 
 	if (scrollX < -barW*2)
 		scrollX += barW*2;
 
-	for (var x=scrollX; x<window.innerWidth; x+=barW*2)
+	for (var x=scrollX; x<gRenderWidth; x+=barW*2)
 	{
 		// Vert
 		fill(255,0,0);		
@@ -85,8 +82,10 @@ function draw()
 		quad(
 			x,h, 
 			x+barW,h, 
-			x+barW+(x+barW-hw)*persp, window.innerHeight,
-			x+(x-hw)*persp, window.innerHeight);
+			x+barW+(x+barW-hw)*persp, gRenderHeight,
+			x+(x-hw)*persp, gRenderHeight);
 
 	}	
+
+	postDraw();
 }

@@ -1,4 +1,6 @@
 
+function toBin(num, size=4) { if (size < 1) size = 1; var s = "000000000000000000" + num.toString(2); return s.substr(s.length-size); }
+
 class Rect
 {
 	constructor (min, max)
@@ -83,13 +85,19 @@ class View
 
 class Tile
 {
-	constructor(parent, lod, worldRect)
+	constructor(parent, lod, worldRect, cellY, cellX)
 	{
 		this.parent = parent;
 		this.children = []; 
 		this.lod = lod; //< 0 for highest detail
 		this.worldRect = worldRect.clone();
+		this.cellY = cellY;
+		this.cellX = cellX;
+
 		this.isLoaded = false;		
+		this.image = null;
+		this.imagePath = "sketches/939b106b/" + 
+			((lod == 4) ? (lod.toString()+".jpg") : (lod.toString() + "_" + toBin(cellY, 4-lod) + "_" + toBin(cellX, 4-lod) + ".jpg"));
 	}
 }
 
@@ -119,7 +127,7 @@ function createTileChildrenRecursive(tile)
 		{
 			var rectMin = tile.worldRect.min.clone().add(childTileSize.clone().multiply(new Victor(x,y)));
 			var rect = new Rect(rectMin, rectMin.clone().add(childTileSize));
-			var newTile = new Tile(tile, tile.lod-1, rect);
+			var newTile = new Tile(tile, tile.lod-1, rect, tile.cellY*2+y, tile.cellX*2+x);
 			tile.children.push(newTile);
 
 			createTileChildrenRecursive(newTile);
@@ -180,10 +188,8 @@ function setup()
 	gView.fitToContent(new Rect(new Victor(0,0), new Victor(16,16)));
 
 	// Create our tree of tiles
-	gRootTile = new Tile(null, 4, new Rect(new Victor(0,0), new Victor(16,16)));
+	gRootTile = new Tile(null, 4, new Rect(new Victor(0,0), new Victor(16,16)), 0, 0);
 	createTileChildrenRecursive(gRootTile);
-
-	updateFakeTileLoading();
 
 	// load image
 	testImg = loadImage("sketches/939b106b/3_0_1.jpg");
@@ -270,6 +276,8 @@ function drawLod0State(tile)
 function draw() 
 {
 	preDraw();
+
+	updateFakeTileLoading();
 
 	// Adjust our view's screenspace to our canvas (in case it resized)
 	gView.screenRect = new Rect(new Victor(0,0), new Victor(gRenderWidth, gRenderHeight));

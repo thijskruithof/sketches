@@ -149,7 +149,10 @@ function updateFakeTileLoading()
 	var tile = findNotLoadedTileWithLowestLodRecursive(gRootTile,-1);
 	if (tile != null)
 	{
-		tile.isLoaded = true;
+		loadImage(tile.imagePath, img => {
+			tile.image = img;
+			tile.isLoaded = true;
+		});		
 	}
 }
 
@@ -240,16 +243,18 @@ function drawTilesRecursive(tile)
 
 	var r = gView.worldToScreenRect(tile.worldRect);
 
-	strokeWeight(1);
-	stroke(0,0,0);
-	if (tile.isLoaded)
-		fill(0,255,0);
-	else
-		fill(255,0,0);
+	image(tile.image, r.min.x, r.min.y, r.max.x-r.min.x, r.max.y-r.min.y);
 
-	rect(r.min.x, r.min.y, r.max.x-r.min.x, r.max.y-r.min.y);
-	line(r.min.x, r.min.y, r.max.x, r.max.y);
-	line(r.min.x, r.max.y, r.max.x, r.min.y);
+	// strokeWeight(1);
+	// stroke(0,0,0);
+	// if (tile.isLoaded)
+	// 	fill(0,255,0);
+	// else
+	// 	fill(255,0,0);
+
+	// rect(r.min.x, r.min.y, r.max.x-r.min.x, r.max.y-r.min.y);
+	// line(r.min.x, r.min.y, r.max.x, r.max.y);
+	// line(r.min.x, r.max.y, r.max.x, r.min.y);
 }
 
 
@@ -301,7 +306,7 @@ function draw()
 	stroke(0,0,0);
 
 	drawTilesRecursive(gRootTile);
-	drawLod0State(gRootTile);
+	//drawLod0State(gRootTile);
 
 
 	//image(testImg, 100, 100);

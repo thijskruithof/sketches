@@ -143,15 +143,21 @@ function createTileChildrenRecursive(tile)
 
 var timeUntilNextLoad = 0;
 
-function updateFakeTileLoading()
+function updateTileLoading()
 {
 	timeUntilNextLoad -= gRenderDeltaTime;
 	if (timeUntilNextLoad > 0)
 		return;
 	
 	timeUntilNextLoad += 0.1;
+
+	var tilesToLoad = getTilesToLoad()
+	if (tilesToLoad.length == 0)
+		return;
 	
-	var tile = findNotLoadedTileWithLowestLodRecursive(gRootTile,-1);
+	var tile = tilesToLoad[0]
+
+//	var tile = findNotLoadedTileWithLowestLodRecursive(gRootTile,-1);
 	if (tile != null)
 	{
 		loadImage(tile.imagePath, img => {
@@ -160,6 +166,38 @@ function updateFakeTileLoading()
 		});		
 	}
 }
+
+
+
+function getTilesToLoad()
+{
+	var tilesPerLod = [[],[],[],[],[],[]]
+	var worldScreenRect = gView.screenToWorldRect(gView.screenRect);
+
+	getTilesToLoadRecursive(gRootTile, worldScreenRect, tilesPerLod);
+
+	// Gather all tiles, LOD 4 first
+	var result = tilesPerLod[tilesPerLod.length-1];
+	for (var j=tilesPerLod.length-2; j>=0; --j)
+		for (var i=0; i<tilesPerLod[j].length; ++i)
+			result.push(tilesPerLod[j][i]);
+	return result;	
+}
+
+
+
+function getTilesToLoadRecursive(tile, worldScreenRect, tilesToLoadPerLod)
+{
+	if (!tile.worldRect.overlaps(worldScreenRect))
+		return;
+	
+	if (!tile.isLoaded)
+		tilesToLoadPerLod[tile.lod].push(tile);
+
+	for (var i=0; i<tile.children.length; ++i)
+		getTilesToLoadRecursive(tile.children[i], worldScreenRect, tilesToLoadPerLod);
+}
+
 
 
 function findNotLoadedTileWithLowestLodRecursive(tile)
@@ -208,8 +246,11 @@ function setup()
 
 
 
-function drawTilesRecursive(tile, desiredLod)
+function drawTilesRecursive(tile, desiredLod, worldScreenRect)
 {
+	if (!tile.worldRect.overlaps(worldScreenRect))
+		return;
+
 	if (tile.children.length > 0 && tile.lod > desiredLod)
 	{
 		var allChildrenLoaded = true;
@@ -222,7 +263,7 @@ function drawTilesRecursive(tile, desiredLod)
 		if (allChildrenLoaded)
 		{
 			for (var i=0; i<tile.children.length; ++i)
-				drawTilesRecursive(tile.children[i], desiredLod);
+				drawTilesRecursive(tile.children[i], desiredLod, worldScreenRect);
 		
 			return;
 		}
@@ -289,7 +330,7 @@ function draw()
 {
 	preDraw();
 
-	updateFakeTileLoading();
+	updateTileLoading();
 
 	// Adjust our view's screenspace to our canvas (in case it resized)
 	gView.screenRect = new Rect(new Victor(0,0), new Victor(gRenderWidth, gRenderHeight));
@@ -313,7 +354,8 @@ function draw()
 	stroke(0,0,0);
 
 	var desiredLod = calcDesiredLod();
-	drawTilesRecursive(gRootTile, desiredLod);
+	var worldScreenRect = gView.screenToWorldRect(gView.screenRect);
+	drawTilesRecursive(gRootTile, desiredLod, worldScreenRect);
 	//drawLod0State(gRootTile);
 
 
@@ -385,4 +427,9 @@ function mouseReleased()
 {
 	gIsPanning = false;
 	gIsZooming = false;
+}
+
+function getScreenRect()
+{
+
 }

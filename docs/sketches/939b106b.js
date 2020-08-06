@@ -79,6 +79,11 @@ class View
 	{
 		return screenPos.clone().subtract(this.screenRect.center).multiply(new Victor(this.worldScale, this.worldScale)).add(this.worldCenter);
 	}
+
+	screenToWorldRect(screenRect)
+	{
+		return new Rect(this.screenToWorldPos(screenRect.min), this.screenToWorldPos(screenRect.max));
+	}
 }
 
 
@@ -188,7 +193,7 @@ function setup()
 	gView = new View(new Rect(new Victor(0, 0), new Victor(window.innerWidth, window.innerHeight)));
 
 	// For now just start with fitting some stuff in our view
-	gView.fitToContent(new Rect(new Victor(0,0), new Victor(16,16)));
+	gView.fitToContent(new Rect(new Victor(8,8), new Victor(9,9)));
 
 	// Create our tree of tiles
 	gRootTile = new Tile(null, 4, new Rect(new Victor(0,0), new Victor(16,16)), 0, 0);
@@ -203,36 +208,21 @@ function setup()
 
 
 
-function drawTilesRecursive(tile)
+function drawTilesRecursive(tile, desiredLod)
 {
-	// if (!tile.isLoaded)
-	// 	return;
-
-	if (tile.children.length > 0)
+	if (tile.children.length > 0 && tile.lod > desiredLod)
 	{
 		var allChildrenLoaded = true;
 		for (var i=0; i<tile.children.length; ++i)
 			if (!tile.children[i].isLoaded)
 		 		allChildrenLoaded = false;
 
-		// If all our children have been loaded
+		// If all our children have been loaded, we can safely draw
+		// each of them individually
 		if (allChildrenLoaded)
 		{
 			for (var i=0; i<tile.children.length; ++i)
-				drawTilesRecursive(tile.children[i]);
-
-			// strokeWeight(4);
-			// if (tile.isLoaded)
-			// 	stroke(0,128,0);
-			// else
-			// 	stroke(128,0,0);
-			// noFill();
-
-			// var margin = new Victor((5-tile.lod)*8, (5-tile.lod)*8);
-			// var r = gView.worldToScreenRect(tile.worldRect);
-			// r.min.add(margin);
-			// r.max.subtract(margin);
-			// rect(r.min.x, r.min.y, r.max.x-r.min.x, r.max.y-r.min.y);			
+				drawTilesRecursive(tile.children[i], desiredLod);
 		
 			return;
 		}
@@ -255,6 +245,23 @@ function drawTilesRecursive(tile)
 	// rect(r.min.x, r.min.y, r.max.x-r.min.x, r.max.y-r.min.y);
 	// line(r.min.x, r.min.y, r.max.x, r.max.y);
 	// line(r.min.x, r.max.y, r.max.x, r.min.y);
+}
+
+
+function calcDesiredLod()
+{
+	var cTileImageSize = 256;
+
+	var worldScreenRect = gView.screenToWorldRect(new Rect(new Victor(0,0), new Victor(gRenderWidth, gRenderHeight)));
+	var worldScreenSize = worldScreenRect.size;
+
+	var numTilePixelsOnScreen = worldScreenSize.clone().multiply(new Victor(cTileImageSize, cTileImageSize));
+	var numTilePixelsPerPixel = numTilePixelsOnScreen.clone().divide(new Victor(gRenderWidth, gRenderHeight));
+
+	var lod = Math.max(1.0, Math.min(numTilePixelsPerPixel.x, numTilePixelsPerPixel.y));
+	lod = Math.min(4.0, Math.round(Math.log2(lod)));
+
+	return lod;
 }
 
 
@@ -305,7 +312,8 @@ function draw()
 	strokeWeight(1);	
 	stroke(0,0,0);
 
-	drawTilesRecursive(gRootTile);
+	var desiredLod = calcDesiredLod();
+	drawTilesRecursive(gRootTile, desiredLod);
 	//drawLod0State(gRootTile);
 
 

@@ -92,6 +92,8 @@ class View
 }
 
 
+const ETileState = { unloaded:0, loading:1, loaded:2 };
+
 
 class Tile
 {
@@ -104,7 +106,7 @@ class Tile
 		this.cellIndex = cellIndex.clone();
 		this.childIndex = childIndex.clone();
 
-		this.isLoaded = false;		
+		this.state = ETileState.unloaded;
 		this.image = null;
 		this.imagePath = "sketches/939b106b/" + 
 			((lod == 4) ? (lod.toString()+".jpg") : (lod.toString() + "_" + toBin(cellIndex.y, 4-lod) + "_" + toBin(cellIndex.x, 4-lod) + ".jpg"));
@@ -196,7 +198,7 @@ function updateTileLoading()
 	if (timeUntilNextLoad > 0)
 		return;
 	
-	timeUntilNextLoad += 0.1;
+	timeUntilNextLoad += 0.5;
 
 	var tilesToLoad = getTilesToLoad()
 	if (tilesToLoad.length == 0)
@@ -207,9 +209,12 @@ function updateTileLoading()
 
 	if (tile != null)
 	{
+		tile.state = ETileState.loading;
 		loadImage(tile.imagePath, img => {
 			tile.image = img;
-			tile.isLoaded = true;
+			tile.state = ETileState.loaded;
+		}, evt => {
+			tile.state = ETileState.unloaded;
 		});		
 	}
 }
@@ -237,7 +242,7 @@ function getTilesToLoadRecursive(tile, worldScreenRect, tilesToLoadPerLod)
 	if (!tile.worldRect.overlaps(worldScreenRect))
 		return;
 	
-	if (!tile.isLoaded)
+	if (tile.state == ETileState.unloaded)
 		tilesToLoadPerLod[tile.lod].push(tile);
 
 	for (var i=0; i<tile.children.length; ++i)
@@ -259,12 +264,12 @@ function setup()
 
 	// Create our empty grids
 	gTileGrids = [];
-	for (var lod=0; lod<4; lod++)
+	for (var lod=0; lod<=4; lod++)
 		gTileGrids.push(new TileGrid(lod, Math.pow(2,4-lod)));
 
 	// Create our tree of tiles
 	gRootTile = new Tile(null, 4, new Rect(new Victor(0,0), new Victor(16,16)), new Victor(0,0), new Victor(0,0));
-	gTileGrids[0].addTile(gRootTile);
+	gTileGrids[4].addTile(gRootTile);
 	createTileChildrenRecursive(gRootTile);
 
 	// Disable any touch controls
@@ -288,26 +293,6 @@ function calcDesiredLod()
 }
 
 
-// function drawLod0State(tile)
-// {
-// 	if (tile.children.length > 0)
-// 	{
-// 		for (var i=0; i<tile.children.length; ++i)
-// 			drawLod0State(tile.children[i]);	
-// 		return;
-// 	}
-
-// 	if (!tile.isLoaded)
-// 		return;
-
-// 	var r = gView.worldToScreenRect(tile.worldRect);
-
-// 	stroke(0,0,0);
-// 	fill(0,128,0);	
-// 	rect(r.min.x, r.min.y, r.max.x-r.min.x, r.max.y-r.min.y);
-// }
-
-
 function getVisibleTiles()
 {
 	var desiredLod = calcDesiredLod();
@@ -324,17 +309,17 @@ function getVisibleTiles()
 		var tileImageRect = new Rect(new Victor(0,0), new Victor(256, 256));
 
 		// Find a parent that is loaded
-		while (tile.lod < 4 && !tile.isLoaded)
+		while (tile.lod < 4 && tile.state != ETileState.loaded)
 		{		
 			// Recalculate our image rect
 			var newImageRectSize = tileImageRect.size.clone().divide(new Victor(2,2));
-			var newImageRectOffset = tileImageRect.min.clone().add(tile.childIndex.clone().multiply(newImageRectSize));
+			var newImageRectOffset = tileImageRect.min.clone().divide(new Victor(2,2)).add(tile.childIndex.clone().multiply(new Victor(128,128)));
 			tileImageRect = new Rect(newImageRectOffset, newImageRectOffset.clone().add(newImageRectSize));
 
 			tile = tile.parent;			
 		}
 
-		if (!tile.isLoaded)
+		if (tile.state != ETileState.loaded)
 			continue;		
 		
 		loadedTilesOnScreen.push({ screenTile: desiredTilesOnScreen[i], sourceTile: tile, sourceTileRect: tileImageRect });
@@ -452,9 +437,4 @@ function mouseReleased()
 {
 	gIsPanning = false;
 	gIsZooming = false;
-}
-
-function getScreenRect()
-{
-
 }

@@ -132,7 +132,7 @@ class TileGrid
 	{
 		var tileSize = pow(2, this.lod);
 		var tl = new Victor(Math.floor(worldRect.min.x/tileSize), Math.floor(worldRect.min.y/tileSize));
-		var br = new Victor(Math.ceil(worldRect.max.x/tileSize), Math.ceil(worldRect.max.y/tileSize));
+		var br = new Victor(Math.floor(worldRect.max.x/tileSize), Math.floor(worldRect.max.y/tileSize));
 
 		// Clamp window to valid range
 		tl.x = Math.min(this.numTilesPerAxis-1, Math.max(0, tl.x));
@@ -177,7 +177,7 @@ function createTileChildrenRecursive(tile)
 		{
 			var rectMin = tile.worldRect.min.clone().add(childTileSize.clone().multiply(new Victor(x,y)));
 			var rect = new Rect(rectMin, rectMin.clone().add(childTileSize));
-			var newTile = new Tile(tile, tile.lod-1, rect, new Victor(tile.cellIndex.y*2+y, tile.cellIndex.x*2+x), new Victor(x, y));
+			var newTile = new Tile(tile, tile.lod-1, rect, new Victor(tile.cellIndex.x*2+x, tile.cellIndex.y*2+y), new Victor(x, y));
 			tile.children.push(newTile);
 
 			gTileGrids[tile.lod-1].addTile(newTile);
@@ -260,7 +260,7 @@ function setup()
 	// Create our empty grids
 	gTileGrids = [];
 	for (var lod=0; lod<4; lod++)
-		gTileGrids.push(new TileGrid(0, Math.pow(2,4-lod)));
+		gTileGrids.push(new TileGrid(lod, Math.pow(2,4-lod)));
 
 	// Create our tree of tiles
 	gRootTile = new Tile(null, 4, new Rect(new Victor(0,0), new Victor(16,16)), new Victor(0,0), new Victor(0,0));

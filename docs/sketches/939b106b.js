@@ -110,6 +110,7 @@ class Tile
 		this.image = null;
 		this.imagePath = "sketches/939b106b/" + 
 			((lod == 4) ? (lod.toString()+".jpg") : (lod.toString() + "_" + toBin(cellIndex.y, 4-lod) + "_" + toBin(cellIndex.x, 4-lod) + ".jpg"));
+		this.isVisible = false;
 	}
 }
 
@@ -166,6 +167,30 @@ var gIsZooming = false;
 var gZoomAmount;
 
 
+
+
+function visitTileParents(tile, visitor)
+{
+	while (tile != null)
+	{
+		visitor(tile);
+		tile = tile.parent;
+	}
+}
+
+
+function visitTileChildren(tile, visitor)
+{
+	if (tile == null)
+		return;
+	
+	visitor(tile);
+	for (var i=0; i<tile.children.length; ++i)
+		visitTileChildren(tile.children[i], visitor);
+}
+
+
+
 function createTileChildrenRecursive(tile)
 {
 	if (tile.lod == 0)
@@ -194,11 +219,11 @@ var timeUntilNextLoad = 0;
 
 function updateTileLoading()
 {
-	timeUntilNextLoad -= gRenderDeltaTime;
-	if (timeUntilNextLoad > 0)
-		return;
+	// timeUntilNextLoad -= gRenderDeltaTime;
+	// if (timeUntilNextLoad > 0)
+	// 	return;
 	
-	timeUntilNextLoad += 0.5;
+	// timeUntilNextLoad += 0.1;
 
 	var tilesToLoad = getTilesToLoad()
 	if (tilesToLoad.length == 0)
@@ -221,11 +246,29 @@ function updateTileLoading()
 
 
 
+function updateTileUnloading()
+{
+	// For now immediately unload all tiles that are not visible.
+	visitTileChildren(gRootTile, tile => { 
+		if (!tile.isVisible && tile.state == ETileState.loaded)
+			tile.state = ETileState.unloaded;
+	});
+}
+
+
+/**
+ * Determine which tiles to load.
+ * This returns the tiles that are on screen, for lods 4 to desired visible lod.
+ */
 function getTilesToLoad()
 {
-	var tilesPerLod = [[],[],[],[],[],[]]
+	var desiredLod = calcDesiredLod();
+	var tilesPerLod = [[],[],[],[],[],[]]	
 
-	getTilesToLoadRecursive(gRootTile, gView.worldRect, tilesPerLod);
+	visitTileChildren(gRootTile, tile => { 
+		if (tile.lod >= desiredLod && tile.isVisible && tile.state == ETileState.unloaded)
+			tilesPerLod[tile.lod].push(tile);
+	});
 
 	// Gather all tiles, LOD 4 first
 	var result = tilesPerLod[tilesPerLod.length-1];
@@ -233,20 +276,6 @@ function getTilesToLoad()
 		for (var i=0; i<tilesPerLod[j].length; ++i)
 			result.push(tilesPerLod[j][i]);
 	return result;	
-}
-
-
-
-function getTilesToLoadRecursive(tile, worldScreenRect, tilesToLoadPerLod)
-{
-	if (!tile.worldRect.overlaps(worldScreenRect))
-		return;
-	
-	if (tile.state == ETileState.unloaded)
-		tilesToLoadPerLod[tile.lod].push(tile);
-
-	for (var i=0; i<tile.children.length; ++i)
-		getTilesToLoadRecursive(tile.children[i], worldScreenRect, tilesToLoadPerLod);
 }
 
 
@@ -301,7 +330,7 @@ function getVisibleTiles()
 	var desiredTileGrid = gTileGrids[desiredLod];
 	var desiredTilesOnScreen = desiredTileGrid.getTilesInWorldRect(worldScreenRect);
 
-	var loadedTilesOnScreen = [];
+	var tiles = [];
 	for (var i=0; i<desiredTilesOnScreen.length; ++i)
 	{
 		var tile = desiredTilesOnScreen[i];
@@ -319,21 +348,17 @@ function getVisibleTiles()
 			tile = tile.parent;			
 		}
 
-		if (tile.state != ETileState.loaded)
-			continue;		
-		
-		loadedTilesOnScreen.push({ screenTile: desiredTilesOnScreen[i], sourceTile: tile, sourceTileRect: tileImageRect });
+		tiles.push({ screenTile: desiredTilesOnScreen[i], sourceTile: tile, sourceTileRect: tileImageRect });
 	}
 
-	return loadedTilesOnScreen;
+	return tiles;
 }
+
 
 
 function draw() 
 {
 	preDraw();
-
-	updateTileLoading();
 
 	// Adjust our view's screenspace to our canvas (in case it resized)
 	gView.screenRect = new Rect(new Victor(0,0), new Victor(gRenderWidth, gRenderHeight));
@@ -356,11 +381,20 @@ function draw()
 	strokeWeight(1);	
 	stroke(0,0,0);
 
+	visitTileChildren(gRootTile, tile => {tile.isVisible = false;});
+
 	var visibleTiles = getVisibleTiles();
 
 	for (var i=0; i<visibleTiles.length; ++i)
 	{	
 		var visibleTile = visibleTiles[i];
+
+		// Mark this tile as being visible, uncluding all its parents
+		visitTileParents(visibleTile.screenTile, tile => {tile.isVisible = true;});
+
+		if (visibleTile.sourceTile.state != ETileState.loaded)
+			continue;
+
 		var screenRect = gView.worldToScreenRect(visibleTile.screenTile.worldRect);
 		var sourceRect = visibleTile.sourceTileRect;
 
@@ -370,6 +404,8 @@ function draw()
 		);
 	}
 
+	updateTileLoading();	
+	updateTileUnloading();
 
 	drawUI();
 

@@ -65,24 +65,29 @@ class View
 		this.worldScale = Math.max(scale.x, scale.y);
 	}
 
-	worldToScreenPos(worldPos)
+	worldToScreenPos(pos)
 	{	
-		return worldPos.clone().subtract(this.worldCenter).divide(new Victor(this.worldScale, this.worldScale)).add(this.screenRect.center);
+		return pos.clone().subtract(this.worldCenter).divide(new Victor(this.worldScale, this.worldScale)).add(this.screenRect.center);
 	}
 
-	worldToScreenRect(worldRect)
+	worldToScreenRect(rect)
 	{
-		return new Rect(this.worldToScreenPos(worldRect.min), this.worldToScreenPos(worldRect.max));
+		return new Rect(this.worldToScreenPos(rect.min), this.worldToScreenPos(rect.max));
 	}
 
-	screenToWorldPos(screenPos)
+	screenToWorldPos(pos)
 	{
-		return screenPos.clone().subtract(this.screenRect.center).multiply(new Victor(this.worldScale, this.worldScale)).add(this.worldCenter);
+		return pos.clone().subtract(this.screenRect.center).multiply(new Victor(this.worldScale, this.worldScale)).add(this.worldCenter);
 	}
 
-	screenToWorldRect(screenRect)
+	screenToWorldRect(rect)
 	{
-		return new Rect(this.screenToWorldPos(screenRect.min), this.screenToWorldPos(screenRect.max));
+		return new Rect(this.screenToWorldPos(rect.min), this.screenToWorldPos(rect.max));
+	}
+
+	get worldRect()
+	{
+		return this.screenToWorldRect(this.screenRect);
 	}
 }
 
@@ -90,26 +95,66 @@ class View
 
 class Tile
 {
-	constructor(parent, lod, worldRect, cellY, cellX)
+	constructor(parent, lod, worldRect, cellIndex, childIndex)
 	{
 		this.parent = parent;
 		this.children = []; 
 		this.lod = lod; //< 0 for highest detail
 		this.worldRect = worldRect.clone();
-		this.cellY = cellY;
-		this.cellX = cellX;
+		this.cellIndex = cellIndex.clone();
+		this.childIndex = childIndex.clone();
 
 		this.isLoaded = false;		
 		this.image = null;
 		this.imagePath = "sketches/939b106b/" + 
-			((lod == 4) ? (lod.toString()+".jpg") : (lod.toString() + "_" + toBin(cellY, 4-lod) + "_" + toBin(cellX, 4-lod) + ".jpg"));
+			((lod == 4) ? (lod.toString()+".jpg") : (lod.toString() + "_" + toBin(cellIndex.y, 4-lod) + "_" + toBin(cellIndex.x, 4-lod) + ".jpg"));
 	}
 }
 
 
+class TileGrid
+{
+	constructor(lod, numTilesPerAxis)
+	{
+		this.lod = lod;
+		this.numTilesPerAxis = numTilesPerAxis;
+		this.tiles = [];
+		for (var x=0; x<numTilesPerAxis*numTilesPerAxis; ++x)
+			this.tiles.push(null);
+	}
+
+	addTile(tile)
+	{
+		this.tiles[tile.cellIndex.y*this.numTilesPerAxis+tile.cellIndex.x] = tile;
+	}
+
+	getTilesInWorldRect(worldRect)
+	{
+		var tileSize = pow(2, this.lod);
+		var tl = new Victor(Math.floor(worldRect.min.x/tileSize), Math.floor(worldRect.min.y/tileSize));
+		var br = new Victor(Math.ceil(worldRect.max.x/tileSize), Math.ceil(worldRect.max.y/tileSize));
+
+		// Clamp window to valid range
+		tl.x = Math.min(this.numTilesPerAxis-1, Math.max(0, tl.x));
+		tl.y = Math.min(this.numTilesPerAxis-1, Math.max(0, tl.y));
+		br.x = Math.min(this.numTilesPerAxis-1, Math.max(0, br.x));
+		br.y = Math.min(this.numTilesPerAxis-1, Math.max(0, br.y));		
+
+		var result = [];
+		for (var y=tl.y; y<=br.y; ++y)
+			for (var x=tl.x; x<=br.x; ++x)
+				result.push(this.tiles[y*this.numTilesPerAxis+x]);
+
+		return result;
+	}
+}
+
 
 var gView;
+
+// Tiles
 var gRootTile;
+var gTileGrids;
 
 // View adjustment
 var gIsPanning = false;
@@ -132,8 +177,10 @@ function createTileChildrenRecursive(tile)
 		{
 			var rectMin = tile.worldRect.min.clone().add(childTileSize.clone().multiply(new Victor(x,y)));
 			var rect = new Rect(rectMin, rectMin.clone().add(childTileSize));
-			var newTile = new Tile(tile, tile.lod-1, rect, tile.cellY*2+y, tile.cellX*2+x);
+			var newTile = new Tile(tile, tile.lod-1, rect, new Victor(tile.cellIndex.y*2+y, tile.cellIndex.x*2+x), new Victor(x, y));
 			tile.children.push(newTile);
+
+			gTileGrids[tile.lod-1].addTile(newTile);
 
 			createTileChildrenRecursive(newTile);
 		}
@@ -154,10 +201,10 @@ function updateTileLoading()
 	var tilesToLoad = getTilesToLoad()
 	if (tilesToLoad.length == 0)
 		return;
-	
+
+	// Simply only load the first one from the list
 	var tile = tilesToLoad[0]
 
-//	var tile = findNotLoadedTileWithLowestLodRecursive(gRootTile,-1);
 	if (tile != null)
 	{
 		loadImage(tile.imagePath, img => {
@@ -172,9 +219,8 @@ function updateTileLoading()
 function getTilesToLoad()
 {
 	var tilesPerLod = [[],[],[],[],[],[]]
-	var worldScreenRect = gView.screenToWorldRect(gView.screenRect);
 
-	getTilesToLoadRecursive(gRootTile, worldScreenRect, tilesPerLod);
+	getTilesToLoadRecursive(gRootTile, gView.worldRect, tilesPerLod);
 
 	// Gather all tiles, LOD 4 first
 	var result = tilesPerLod[tilesPerLod.length-1];
@@ -199,28 +245,6 @@ function getTilesToLoadRecursive(tile, worldScreenRect, tilesToLoadPerLod)
 }
 
 
-
-function findNotLoadedTileWithLowestLodRecursive(tile)
-{
-	var bestTile = null;
-
-	for (var i=0; i<tile.children.length; ++i)
-	{
-		var childBestTile = findNotLoadedTileWithLowestLodRecursive(tile.children[i]);
-		if (childBestTile != null)
-		{
-			if (bestTile == null || childBestTile.lod > bestTile.lod)
-				bestTile = childBestTile;
-		}
-	}
-
-	if (!tile.isLoaded && (bestTile == null || tile.lod > bestTile.lod))
-		bestTile = tile;
-
-	return bestTile;
-}
-
-
 function setup() 
 {
 	var cnv = createCanvas(window.innerWidth, window.innerHeight);
@@ -233,59 +257,18 @@ function setup()
 	// For now just start with fitting some stuff in our view
 	gView.fitToContent(new Rect(new Victor(8,8), new Victor(9,9)));
 
-	// Create our tree of tiles
-	gRootTile = new Tile(null, 4, new Rect(new Victor(0,0), new Victor(16,16)), 0, 0);
-	createTileChildrenRecursive(gRootTile);
+	// Create our empty grids
+	gTileGrids = [];
+	for (var lod=0; lod<4; lod++)
+		gTileGrids.push(new TileGrid(0, Math.pow(2,4-lod)));
 
-	// load image
-	testImg = loadImage("sketches/939b106b/3_0_1.jpg");
+	// Create our tree of tiles
+	gRootTile = new Tile(null, 4, new Rect(new Victor(0,0), new Victor(16,16)), new Victor(0,0), new Victor(0,0));
+	gTileGrids[0].addTile(gRootTile);
+	createTileChildrenRecursive(gRootTile);
 
 	// Disable any touch controls
 	cnv.style('touch-action', 'none');
-}
-
-
-
-function drawTilesRecursive(tile, desiredLod, worldScreenRect)
-{
-	if (!tile.worldRect.overlaps(worldScreenRect))
-		return;
-
-	if (tile.children.length > 0 && tile.lod > desiredLod)
-	{
-		var allChildrenLoaded = true;
-		for (var i=0; i<tile.children.length; ++i)
-			if (!tile.children[i].isLoaded)
-		 		allChildrenLoaded = false;
-
-		// If all our children have been loaded, we can safely draw
-		// each of them individually
-		if (allChildrenLoaded)
-		{
-			for (var i=0; i<tile.children.length; ++i)
-				drawTilesRecursive(tile.children[i], desiredLod, worldScreenRect);
-		
-			return;
-		}
-	}
-
-	if (!tile.isLoaded)
-		return;
-
-	var r = gView.worldToScreenRect(tile.worldRect);
-
-	image(tile.image, r.min.x, r.min.y, r.max.x-r.min.x, r.max.y-r.min.y);
-
-	// strokeWeight(1);
-	// stroke(0,0,0);
-	// if (tile.isLoaded)
-	// 	fill(0,255,0);
-	// else
-	// 	fill(255,0,0);
-
-	// rect(r.min.x, r.min.y, r.max.x-r.min.x, r.max.y-r.min.y);
-	// line(r.min.x, r.min.y, r.max.x, r.max.y);
-	// line(r.min.x, r.max.y, r.max.x, r.min.y);
 }
 
 
@@ -293,8 +276,7 @@ function calcDesiredLod()
 {
 	var cTileImageSize = 256;
 
-	var worldScreenRect = gView.screenToWorldRect(new Rect(new Victor(0,0), new Victor(gRenderWidth, gRenderHeight)));
-	var worldScreenSize = worldScreenRect.size;
+	var worldScreenSize = gView.worldRect.size;
 
 	var numTilePixelsOnScreen = worldScreenSize.clone().multiply(new Victor(cTileImageSize, cTileImageSize));
 	var numTilePixelsPerPixel = numTilePixelsOnScreen.clone().divide(new Victor(gRenderWidth, gRenderHeight));
@@ -306,23 +288,59 @@ function calcDesiredLod()
 }
 
 
-function drawLod0State(tile)
+// function drawLod0State(tile)
+// {
+// 	if (tile.children.length > 0)
+// 	{
+// 		for (var i=0; i<tile.children.length; ++i)
+// 			drawLod0State(tile.children[i]);	
+// 		return;
+// 	}
+
+// 	if (!tile.isLoaded)
+// 		return;
+
+// 	var r = gView.worldToScreenRect(tile.worldRect);
+
+// 	stroke(0,0,0);
+// 	fill(0,128,0);	
+// 	rect(r.min.x, r.min.y, r.max.x-r.min.x, r.max.y-r.min.y);
+// }
+
+
+function getVisibleTiles()
 {
-	if (tile.children.length > 0)
+	var desiredLod = calcDesiredLod();
+	var worldScreenRect = gView.worldRect;
+
+	var desiredTileGrid = gTileGrids[desiredLod];
+	var desiredTilesOnScreen = desiredTileGrid.getTilesInWorldRect(worldScreenRect);
+
+	var loadedTilesOnScreen = [];
+	for (var i=0; i<desiredTilesOnScreen.length; ++i)
 	{
-		for (var i=0; i<tile.children.length; ++i)
-			drawLod0State(tile.children[i]);	
-		return;
+		var tile = desiredTilesOnScreen[i];
+
+		var tileImageRect = new Rect(new Victor(0,0), new Victor(256, 256));
+
+		// Find a parent that is loaded
+		while (tile.lod < 4 && !tile.isLoaded)
+		{		
+			// Recalculate our image rect
+			var newImageRectSize = tileImageRect.size.clone().divide(new Victor(2,2));
+			var newImageRectOffset = tileImageRect.min.clone().add(tile.childIndex.clone().multiply(newImageRectSize));
+			tileImageRect = new Rect(newImageRectOffset, newImageRectOffset.clone().add(newImageRectSize));
+
+			tile = tile.parent;			
+		}
+
+		if (!tile.isLoaded)
+			continue;		
+		
+		loadedTilesOnScreen.push({ screenTile: desiredTilesOnScreen[i], sourceTile: tile, sourceTileRect: tileImageRect });
 	}
 
-	if (!tile.isLoaded)
-		return;
-
-	var r = gView.worldToScreenRect(tile.worldRect);
-
-	stroke(0,0,0);
-	fill(0,128,0);	
-	rect(r.min.x, r.min.y, r.max.x-r.min.x, r.max.y-r.min.y);
+	return loadedTilesOnScreen;
 }
 
 
@@ -353,13 +371,20 @@ function draw()
 	strokeWeight(1);	
 	stroke(0,0,0);
 
-	var desiredLod = calcDesiredLod();
-	var worldScreenRect = gView.screenToWorldRect(gView.screenRect);
-	drawTilesRecursive(gRootTile, desiredLod, worldScreenRect);
-	//drawLod0State(gRootTile);
+	var visibleTiles = getVisibleTiles();
 
+	for (var i=0; i<visibleTiles.length; ++i)
+	{	
+		var visibleTile = visibleTiles[i];
+		var screenRect = gView.worldToScreenRect(visibleTile.screenTile.worldRect);
+		var sourceRect = visibleTile.sourceTileRect;
 
-	//image(testImg, 100, 100);
+		image(visibleTile.sourceTile.image, 
+			screenRect.min.x, screenRect.min.y, screenRect.max.x-screenRect.min.x, screenRect.max.y-screenRect.min.y,
+			sourceRect.min.x, sourceRect.min.y, sourceRect.max.x-sourceRect.min.x, sourceRect.max.y-sourceRect.min.y
+		);
+	}
+
 
 	drawUI();
 

@@ -186,6 +186,20 @@ var gPanInitialMouseView;
 var gIsZooming = false;
 var gZoomAmount;
 
+// Streaming state
+var gNumTilesBeingLoaded = 0;
+
+// Debug info
+var gDebugInfo = {
+	desiredLod: 0,
+	numTilesVisible: 0,
+	numTilesLoaded: 0,
+	numTilesLoading: 0
+};
+
+var gDebugSettings = {
+	loadOneByOne: false
+};
 
 
 
@@ -235,7 +249,7 @@ function createTileChildrenRecursive(tile)
 }
 
 
-var timeUntilNextLoad = 0;
+// var timeUntilNextLoad = 0;
 
 function updateTileLoading()
 {
@@ -244,6 +258,9 @@ function updateTileLoading()
 	// 	return;
 	
 	// timeUntilNextLoad += 0.1;
+
+	if (gDebugSettings.loadOneByOne && gNumTilesBeingLoaded > 0)
+		return;
 
 	var tilesToLoad = getTilesToLoad()
 	if (tilesToLoad.length == 0)
@@ -254,12 +271,16 @@ function updateTileLoading()
 
 	if (tile != null)
 	{
+		gNumTilesBeingLoaded++;
 		tile.state = ETileState.loading;
+
 		loadImage(tile.imagePath, img => {
 			tile.image = img;
 			tile.state = ETileState.loaded;
+			gNumTilesBeingLoaded--;
 		}, evt => {
 			tile.state = ETileState.unloaded;
+			gNumTilesBeingLoaded--;
 		});		
 	}
 }
@@ -299,6 +320,7 @@ function getTilesToLoad()
 }
 
 
+
 function setup() 
 {
 	var cnv = createCanvas(window.innerWidth, window.innerHeight);
@@ -323,6 +345,20 @@ function setup()
 
 	// Disable any touch controls
 	cnv.style('touch-action', 'none');
+
+	// Set up debug ui
+	var pane = new Tweakpane();
+	pane.element.parentElement.style.top = "67px";
+
+	var folderStatus = pane.addFolder({ title: 'Status' });	
+	folderStatus.addMonitor(gDebugInfo, 'desiredLod', {label: "LOD"});
+	folderStatus.addMonitor(gDebugInfo, 'numTilesVisible', {label: "Tiles visible"});
+	folderStatus.addMonitor(gDebugInfo, 'numTilesLoaded', {label: "Tiles loaded"});
+	folderStatus.addMonitor(gDebugInfo, 'numTilesLoading', {label: "Tiles loading"});
+	
+
+	var folderStreaming = pane.addFolder({ title: 'Streaming' });
+	folderStreaming.addInput(gDebugSettings, 'loadOneByOne');
 }
 
 
@@ -342,9 +378,8 @@ function calcDesiredLod()
 }
 
 
-function getVisibleTiles()
+function getVisibleTiles(desiredLod)
 {
-	var desiredLod = calcDesiredLod();
 	var worldScreenRect = gView.worldRect;
 
 	var desiredTileGrid = gTileGrids[desiredLod];
@@ -403,7 +438,8 @@ function draw()
 
 	visitTileChildren(gRootTile, tile => {tile.isVisible = false;});
 
-	var visibleTiles = getVisibleTiles();
+	var desiredLod = calcDesiredLod();
+	var visibleTiles = getVisibleTiles(desiredLod);
 
 	for (var i=0; i<visibleTiles.length; ++i)
 	{	
@@ -426,6 +462,15 @@ function draw()
 
 	updateTileLoading();	
 	updateTileUnloading();
+
+	// Gather debug info
+	var numTilesLoaded = 0;
+	visitTileChildren(gRootTile, tile => { if (tile.state == ETileState.loaded) numTilesLoaded++;});
+	
+	gDebugInfo.desiredLod = desiredLod;
+	gDebugInfo.numTilesVisible = visibleTiles.length;
+	gDebugInfo.numTilesLoaded = numTilesLoaded;
+	gDebugInfo.numTilesLoading = gNumTilesBeingLoaded;
 
 	drawUI();
 
@@ -473,12 +518,12 @@ function mousePressed()
 		if (isMouseOverZoomButton(true))
 		{
 			gIsZooming = true;
-			gZoomAmount = 0.01;
+			gZoomAmount = 0.02;
 		}
 		else if (isMouseOverZoomButton(false))
 		{
 			gIsZooming = true;
-			gZoomAmount = -0.01;
+			gZoomAmount = -0.02;
 		}
 		else 
 		{

@@ -18,8 +18,41 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+const gMaps = [
+	{ 
+		title: "Testing grid", 
+		tileSize: 256, 
+		numTilesPerAxisLod0: 16, 
+		numLods: 5, 
+		tileFilename: tile => { 
+			return "sketches/939b106b/" + (
+				(tile.lod == gMap.numLods-1) ? 
+				(tile.lod.toString()+".jpg") : 
+				(tile.lod.toString() + "_" + toBin(tile.cellIndex.y, (gMap.numLods-1)-tile.lod) + "_" + toBin(tile.cellIndex.x, (gMap.numLods-1)-tile.lod) + ".jpg")
+				); 
+		} 
+	},
+	{ 
+		title: "Mars", 
+		tileSize: 512, 
+		numTilesPerAxisLod0: 32, 
+		numLods: 6, 
+		tileFilename: tile => { 
+			return "sketches/939b106b/mars/" + tile.lod.toString() + "/" +
+				((tile.lod == gMap.numLods-1) ? "0/0.jpg" : (tile.cellIndex.y.toString() + "/" + tile.cellIndex.x.toString() + ".jpg")); 
+		} 
 
-function toBin(num, size=4) { if (size < 1) size = 1; var s = "000000000000000000" + num.toString(2); return s.substr(s.length-size); }
+	},
+];
+
+
+function toBin(num, size=4) 
+{ 
+	if (size < 1) 
+		size = 1; 
+	var s = "000000000000000000" + num.toString(2); 
+	return s.substr(s.length-size); 
+}
 
 class Rect
 {
@@ -128,8 +161,7 @@ class Tile
 
 		this.state = ETileState.unloaded;
 		this.image = null;
-		this.imagePath = "sketches/939b106b/" + 
-			((lod == 4) ? (lod.toString()+".jpg") : (lod.toString() + "_" + toBin(cellIndex.y, 4-lod) + "_" + toBin(cellIndex.x, 4-lod) + ".jpg"));
+		this.imagePath = gMap.tileFilename(this);
 		this.isVisible = false;
 	}
 }
@@ -173,6 +205,7 @@ class TileGrid
 }
 
 
+var gMap;
 var gView;
 
 // Tiles
@@ -249,16 +282,9 @@ function createTileChildrenRecursive(tile)
 }
 
 
-// var timeUntilNextLoad = 0;
 
 function updateTileLoading()
 {
-	// timeUntilNextLoad -= gRenderDeltaTime;
-	// if (timeUntilNextLoad > 0)
-	// 	return;
-	
-	// timeUntilNextLoad += 0.1;
-
 	if (gDebugSettings.loadOneByOne && gNumTilesBeingLoaded > 0)
 		return;
 
@@ -304,14 +330,16 @@ function updateTileUnloading()
 function getTilesToLoad()
 {
 	var desiredLod = calcDesiredLod();
-	var tilesPerLod = [[],[],[],[],[],[]]	
+	var tilesPerLod = [];
+	for (var i=0; i<gMap.numLods; ++i)
+		tilesPerLod.push([]);	
 
 	visitTileChildren(gRootTile, tile => { 
 		if (tile.lod >= desiredLod && tile.isVisible && tile.state == ETileState.unloaded)
 			tilesPerLod[tile.lod].push(tile);
 	});
 
-	// Gather all tiles, LOD 4 first
+	// Gather all tiles, LOD N first
 	var result = tilesPerLod[tilesPerLod.length-1];
 	for (var j=tilesPerLod.length-2; j>=0; --j)
 		for (var i=0; i<tilesPerLod[j].length; ++i)
@@ -327,6 +355,8 @@ function setup()
 	cnv.position(0, 0);	
 	cnv.style('position', 'absolute');
 
+	gMap = gMaps[1];
+
 	// Construct our view
 	gView = new View(new Rect(new Victor(0, 0), new Victor(window.innerWidth, window.innerHeight)));
 
@@ -335,12 +365,12 @@ function setup()
 
 	// Create our empty grids
 	gTileGrids = [];
-	for (var lod=0; lod<=4; lod++)
-		gTileGrids.push(new TileGrid(lod, Math.pow(2,4-lod)));
+	for (var lod=0; lod<gMap.numLods; lod++)
+		gTileGrids.push(new TileGrid(lod, Math.pow(2,(gMap.numLods-1)-lod)));
 
 	// Create our tree of tiles
-	gRootTile = new Tile(null, 4, new Rect(new Victor(0,0), new Victor(16,16)), new Victor(0,0), new Victor(0,0));
-	gTileGrids[4].addTile(gRootTile);
+	gRootTile = new Tile(null, gMap.numLods-1, new Rect(new Victor(0,0), new Victor(gMap.numTilesPerAxisLod0,gMap.numTilesPerAxisLod0)), new Victor(0,0), new Victor(0,0));
+	gTileGrids[gMap.numLods-1].addTile(gRootTile);
 	createTileChildrenRecursive(gRootTile);
 
 	// Disable any touch controls
@@ -364,7 +394,7 @@ function setup()
 
 function calcDesiredLod()
 {
-	var cTileImageSize = 256;
+	var cTileImageSize = gMap.tileSize;
 
 	var worldScreenSize = gView.worldRect.size;
 
@@ -372,7 +402,7 @@ function calcDesiredLod()
 	var numTilePixelsPerPixel = numTilePixelsOnScreen.clone().divide(new Victor(gRenderWidth, gRenderHeight));
 
 	var lod = Math.max(1.0, Math.min(numTilePixelsPerPixel.x, numTilePixelsPerPixel.y));
-	lod = Math.min(4.0, Math.round(Math.log2(lod)));
+	lod = Math.min(gMap.numLods-1, Math.round(Math.log2(lod)));
 
 	return lod;
 }
@@ -390,14 +420,14 @@ function getVisibleTiles(desiredLod)
 	{
 		var tile = desiredTilesOnScreen[i];
 
-		var tileImageRect = new Rect(new Victor(0,0), new Victor(256, 256));
+		var tileImageRect = new Rect(new Victor(0,0), new Victor(gMap.tileSize, gMap.tileSize));
 
 		// Find a parent that is loaded
-		while (tile.lod < 4 && tile.state != ETileState.loaded)
+		while (tile.lod < gMap.numLods-1 && tile.state != ETileState.loaded)
 		{		
 			// Recalculate our image rect
 			var newImageRectSize = tileImageRect.size.clone().divide(new Victor(2,2));
-			var newImageRectOffset = tileImageRect.min.clone().divide(new Victor(2,2)).add(tile.childIndex.clone().multiply(new Victor(128,128)));
+			var newImageRectOffset = tileImageRect.min.clone().divide(new Victor(2,2)).add(tile.childIndex.clone().multiply(new Victor(gMap.tileSize/2, gMap.tileSize/2)));
 			tileImageRect = new Rect(newImageRectOffset, newImageRectOffset.clone().add(newImageRectSize));
 
 			tile = tile.parent;			

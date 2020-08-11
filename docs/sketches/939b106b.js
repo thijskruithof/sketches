@@ -25,7 +25,7 @@ const gMaps = [
 		numTilesPerAxisLod0: 16, 
 		numLods: 5, 
 		tileFilename: tile => { 
-			return "sketches/939b106b/" + (
+			return "sketches/939b106b/grid/" + (
 				(tile.lod == gMap.numLods-1) ? 
 				(tile.lod.toString()+".jpg") : 
 				(tile.lod.toString() + "_" + toBin(tile.cellIndex.y, (gMap.numLods-1)-tile.lod) + "_" + toBin(tile.cellIndex.x, (gMap.numLods-1)-tile.lod) + ".jpg")
@@ -39,7 +39,7 @@ const gMaps = [
 		numLods: 6, 
 		tileFilename: tile => { 
 			return "sketches/939b106b/mars/" + tile.lod.toString() + "/" +
-				((tile.lod == gMap.numLods-1) ? "0/0.jpg" : (tile.cellIndex.y.toString() + "/" + tile.cellIndex.x.toString() + ".jpg")); 
+				((tile.lod == gMap.numLods-1) ? "0/0.webp" : (tile.cellIndex.y.toString() + "/" + tile.cellIndex.x.toString() + ".webp")); 
 		} 
 
 	},

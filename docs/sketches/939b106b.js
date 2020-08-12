@@ -91,31 +91,33 @@ class View
 	constructor(screenRect)
 	{
 		// Screen dimensions
-		this._screenRect = screenRect.clone();
+		this.screenRect = screenRect.clone();
 
 		// World dimensions
 		this.worldCenter = new Victor(0, 0);	//< Which position (in world coords) is shown in the center of the screen
-		this._worldScale = 1.0; 					//< Size in pixels on screen of 1 world unit.
+		this.worldScale = 1.0; 					//< Size in pixels on screen of 1 world unit.
 	}
 
 	clone()
 	{
 		var newView = new View(this.screenRect);
-		newView.worldCenter = this.worldCenter.clone();
 		newView.worldScale = this.worldScale;
+		newView.worldCenter = this.worldCenter.clone();
 		return newView;
 	}
 
 	fitToContent(worldRect)
 	{	
-		// Center
-		this.worldCenter = worldRect.center;
-
 		// Scale
 		var worldSize = worldRect.size;
 		var screenSize = this.screenRect.size;
 		var scale = new Victor(worldSize.x / screenSize.x, worldSize.y / screenSize.y);
 		this.worldScale = Math.max(scale.x, scale.y);
+		
+		// Center
+		this.worldCenter = worldRect.center;
+
+		this.applyViewLimits();
 	}
 
 	worldToScreenPos(pos)
@@ -143,28 +145,32 @@ class View
 		return this.screenToWorldRect(this.screenRect);
 	}
 
-	get worldScale()
+	applyViewLimits()
 	{
-		return this._worldScale;
-	}
-
-	set worldScale(scale)
-	{
+		// Limit scale
 		var minScale = 1.0/gMap.tileSize;
 		var maxScale = gMap.numTilesPerAxisLod0 / Math.max(this.screenRect.size.x, this.screenRect.size.y);
-		this._worldScale = Math.min(Math.max(scale, minScale), maxScale);
-	}
+		this.worldScale = Math.min(Math.max(this.worldScale, minScale), maxScale);
 
-	get screenRect()
-	{
-		return this._screenRect;
-	}
+		// Limit panning
+		// N,N in world should be on screen W,H, what should world center be?
 
-	set screenRect(rect)
-	{
-		this._screenRect = rect;
-		// Reapply worldscale, enforcing the limits
-		this.worldScale = this._worldScale;
+		// ((N,N)-worldCenter)/scale + screenCenter = W,H
+		// ((W,H)-screenCenter)*scale = (N,N)-worldCenter
+		// -(((W,H)-screenCenter)*scale - (N,N)) = worldCenter
+		// (N,N) - ((W,H)-screenCenter)*scale = worldCenter
+		// (N,N) - screenCenter*scale = worldCenter
+
+
+		// Min world center: when 0,0 in world is placed at 0,0 on screen
+		var minWorldCenter = this.screenRect.center.clone().multiply(new Victor(this.worldScale, this.worldScale));
+		// Max world center: when N,N in world is placed at W,H on screen
+		var maxWorldCenter = new Victor(gMap.numTilesPerAxisLod0, gMap.numTilesPerAxisLod0).subtract(minWorldCenter);
+
+		this.worldCenter = new Victor(
+			Math.max(minWorldCenter.x, Math.min(maxWorldCenter.x, this.worldCenter.x)),
+			Math.max(minWorldCenter.y, Math.min(maxWorldCenter.y, this.worldCenter.y)),
+		);
 	}
 }
 
@@ -505,6 +511,8 @@ function draw()
 	{	
 		gView.worldScale *= pow(2, -gZoomAmount);
 	}
+
+	gView.applyViewLimits();
 
 	background(255, 255, 255);
 

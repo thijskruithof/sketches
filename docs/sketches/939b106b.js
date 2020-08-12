@@ -91,11 +91,11 @@ class View
 	constructor(screenRect)
 	{
 		// Screen dimensions
-		this.screenRect = screenRect.clone();
+		this._screenRect = screenRect.clone();
 
 		// World dimensions
 		this.worldCenter = new Victor(0, 0);	//< Which position (in world coords) is shown in the center of the screen
-		this.worldScale = 1.0; 					//< Size in pixels on screen of 1 world unit.
+		this._worldScale = 1.0; 					//< Size in pixels on screen of 1 world unit.
 	}
 
 	clone()
@@ -141,6 +141,30 @@ class View
 	get worldRect()
 	{
 		return this.screenToWorldRect(this.screenRect);
+	}
+
+	get worldScale()
+	{
+		return this._worldScale;
+	}
+
+	set worldScale(scale)
+	{
+		var minScale = 1.0/gMap.tileSize;
+		var maxScale = gMap.numTilesPerAxisLod0 / Math.max(this.screenRect.size.x, this.screenRect.size.y);
+		this._worldScale = Math.min(Math.max(scale, minScale), maxScale);
+	}
+
+	get screenRect()
+	{
+		return this._screenRect;
+	}
+
+	set screenRect(rect)
+	{
+		this._screenRect = rect;
+		// Reapply worldscale, enforcing the limits
+		this.worldScale = this._worldScale;
 	}
 }
 
@@ -473,10 +497,12 @@ function draw()
 		var currentMouseWorldPos = gPanInitialMouseView.screenToWorldPos(getMousePos());
 		var deltaMouseWorldPos = currentMouseWorldPos.clone().subtract(gPanInitialMouseWorldPos);
 
-		gView.worldCenter.copy(gPanInitialMouseView.worldCenter).subtract(deltaMouseWorldPos);
+		var newWorldCenter = gPanInitialMouseView.worldCenter.clone().subtract(deltaMouseWorldPos);
+
+		gView.worldCenter = newWorldCenter;
 	}
 	if (gIsZooming)
-	{
+	{	
 		gView.worldScale *= pow(2, -gZoomAmount);
 	}
 

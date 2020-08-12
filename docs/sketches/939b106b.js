@@ -231,6 +231,7 @@ var gDebugInfo = {
 };
 
 var gDebugSettings = {
+	mapIndex: 1,
 	loadOneByOne: false
 };
 
@@ -348,19 +349,16 @@ function getTilesToLoad()
 }
 
 
-
-function setup() 
+function selectMap(map)
 {
-	var cnv = createCanvas(window.innerWidth, window.innerHeight);
-	cnv.position(0, 0);	
-	cnv.style('position', 'absolute');
+	// Unload all images (if any)	
+	if (gRootTile != null)
+		visitTileChildren(gRootTile, tile => {tile.state = ETileState.unloaded;});
 
-	gMap = gMaps[1];
+	// Switch to new map
+	gMap = map;
 
-	// Construct our view
-	gView = new View(new Rect(new Victor(0, 0), new Victor(window.innerWidth, window.innerHeight)));
-
-	// For now just start with fitting some stuff in our view
+	// Reset our view
 	gView.fitToContent(new Rect(new Victor(8,8), new Victor(9,9)));
 
 	// Create our empty grids
@@ -372,6 +370,20 @@ function setup()
 	gRootTile = new Tile(null, gMap.numLods-1, new Rect(new Victor(0,0), new Victor(gMap.numTilesPerAxisLod0,gMap.numTilesPerAxisLod0)), new Victor(0,0), new Victor(0,0));
 	gTileGrids[gMap.numLods-1].addTile(gRootTile);
 	createTileChildrenRecursive(gRootTile);
+}
+
+
+function setup() 
+{
+	var cnv = createCanvas(window.innerWidth, window.innerHeight);
+	cnv.position(0, 0);	
+	cnv.style('position', 'absolute');
+
+	// Construct our view
+	gView = new View(new Rect(new Victor(0, 0), new Victor(window.innerWidth, window.innerHeight)));
+
+	// Init our map
+	selectMap(gMaps[gDebugSettings.mapIndex]);
 
 	// Disable any touch controls
 	cnv.style('touch-action', 'none');
@@ -385,10 +397,17 @@ function setup()
 	folderStatus.addMonitor(gDebugInfo, 'numTilesVisible', {label: "Tiles visible"});
 	folderStatus.addMonitor(gDebugInfo, 'numTilesLoaded', {label: "Tiles loaded"});
 	folderStatus.addMonitor(gDebugInfo, 'numTilesLoading', {label: "Tiles loading"});
-	
+
+	var folderMap = pane.addFolder({ title: 'Map' });
+	var mapOptions = {};
+	for (var i=0; i<gMaps.length; ++i)
+		mapOptions[gMaps[i].title] = i;
+	folderMap.addInput(gDebugSettings, 'mapIndex', { options: mapOptions, label: "Map"	}).on('change', (value) => {
+		selectMap(gMaps[value]);
+	});
 
 	var folderStreaming = pane.addFolder({ title: 'Streaming' });
-	folderStreaming.addInput(gDebugSettings, 'loadOneByOne');
+	folderStreaming.addInput(gDebugSettings, 'loadOneByOne', {label: "Load one by one"});
 }
 
 

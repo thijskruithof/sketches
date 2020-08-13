@@ -155,15 +155,6 @@ class View
 		this.worldScale = Math.min(Math.max(this.worldScale, minScale), maxScale);
 
 		// Limit panning
-		// N,N in world should be on screen W,H, what should world center be?
-
-		// ((N,N)-worldCenter)/scale + screenCenter = W,H
-		// ((W,H)-screenCenter)*scale = (N,N)-worldCenter
-		// -(((W,H)-screenCenter)*scale - (N,N)) = worldCenter
-		// (N,N) - ((W,H)-screenCenter)*scale = worldCenter
-		// (N,N) - screenCenter*scale = worldCenter
-
-
 		// Min world center: when 0,0 in world is placed at 0,0 on screen
 		var minWorldCenter = this.screenRect.center.clone().multiply(new Victor(this.worldScale, this.worldScale));
 		// Max world center: when N,N in world is placed at W,H on screen
@@ -260,6 +251,12 @@ var gZoomAmount;
 
 // Streaming state
 var gNumTilesBeingLoaded = 0;
+
+// UI
+var gOptionsButtonOn;
+var gOptionsButtonOff;
+var gOptionsButtonAngle = 0;
+var gTweakPane;
 
 // Debug info
 var gDebugInfo = {
@@ -429,16 +426,17 @@ function setup()
 	cnv.style('touch-action', 'none');
 
 	// Set up debug ui
-	var pane = new Tweakpane();
-	pane.element.parentElement.style.top = "67px";
+	gTweakPane = new Tweakpane();
+	gTweakPane.element.parentElement.style.top = "116px";
+	gTweakPane.hidden = true;
 
-	var folderStatus = pane.addFolder({ title: 'Status' });	
+	var folderStatus = gTweakPane.addFolder({ title: 'Status' });	
 	folderStatus.addMonitor(gDebugInfo, 'desiredLod', {label: "LOD"});
 	folderStatus.addMonitor(gDebugInfo, 'numTilesVisible', {label: "Tiles visible"});
 	folderStatus.addMonitor(gDebugInfo, 'numTilesLoaded', {label: "Tiles loaded"});
 	folderStatus.addMonitor(gDebugInfo, 'numTilesLoading', {label: "Tiles loading"});
 
-	var folderMap = pane.addFolder({ title: 'Map' });
+	var folderMap = gTweakPane.addFolder({ title: 'Map' });
 	var mapOptions = {};
 	for (var i=0; i<gMaps.length; ++i)
 		mapOptions[gMaps[i].title] = i;
@@ -446,8 +444,11 @@ function setup()
 		selectMap(gMaps[value]);
 	});
 
-	var folderStreaming = pane.addFolder({ title: 'Streaming' });
+	var folderStreaming = gTweakPane.addFolder({ title: 'Streaming' });
 	folderStreaming.addInput(gDebugSettings, 'loadOneByOne', {label: "Load one by one"});
+
+	gOptionsButtonOn = loadImage("sketches/939b106b/options_on.png");
+	gOptionsButtonOff = loadImage("sketches/939b106b/options_off.png");
 }
 
 
@@ -586,6 +587,8 @@ function isMouseOverZoomButton(zoomIn)
 }
 
 
+var drawUImouseWasPressed = false;
+
 function drawUI()
 {
 	strokeWeight(1);
@@ -602,6 +605,24 @@ function drawUI()
 	textSize(50);
 	text('+', 100, gRenderHeight-200+4);
 	text('-', 100, gRenderHeight-100);
+
+	var buttonPos = new Victor(gRenderWidth - 30, 86);
+	var on = (getMousePos().distance(buttonPos) <= 32.0);
+
+	var desiredAngle = gTweakPane.hidden ? 0 : PI;
+	gOptionsButtonAngle = gOptionsButtonAngle + (desiredAngle - gOptionsButtonAngle)*0.1;
+
+	translate(buttonPos.x, buttonPos.y);
+	rotate(gOptionsButtonAngle);
+	imageMode(CENTER);
+	image(on ? gOptionsButtonOn : gOptionsButtonOff, 0,0);
+	imageMode(CORNER);
+
+
+	if (!drawUImouseWasPressed && mouseIsPressed && on)
+		gTweakPane.hidden = !gTweakPane.hidden;
+
+	drawUImouseWasPressed = mouseIsPressed;
 }
 
 function mousePressed()

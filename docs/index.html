@@ -88,6 +88,18 @@
 
         // Show the navigation bar
         document.getElementById("navigationBar").style.display = "flex";
+
+        // Disble default browser pinch zooming
+        document.addEventListener(
+          'wheel',
+          function touchHandler(e) {
+            if (e.ctrlKey) {
+            e.preventDefault();
+            }
+          },
+          { passive: false }
+          );
+
       }
       // currentSketchIndex == -1?
       else 
@@ -239,6 +251,7 @@
       margin:0px;
       display:block;
       padding: 0px;
+      touch-action: none;
     }
     .navigationBar
     {

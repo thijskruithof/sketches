@@ -248,6 +248,9 @@ var gPanInitialMouseWorldPos;
 var gPanInitialMouseView;
 var gIsZooming = false;
 var gZoomAmount;
+var gZoomInitialMouseWorldPos;
+var gZoomInitialMouseView;
+
 
 // Streaming state
 var gNumTilesBeingLoaded = 0;
@@ -520,7 +523,11 @@ function draw()
 	}
 	if (gIsZooming)
 	{	
-		gView.worldScale *= pow(2, -gZoomAmount);
+		var factor = pow(2, -gZoomAmount);
+		var d = gZoomInitialMouseWorldPos.clone().subtract(gZoomInitialMouseView.worldCenter);
+		gView.worldScale *= factor;
+		//gView.worldCenter = gZoom InitialMouseView.worldCenter.clone().subtract(d.multiply(new Victor(factor, factor)));
+		gIsZooming = false;
 	}
 
 	gView.applyViewLimits();
@@ -602,28 +609,31 @@ function drawUI()
 
 function mousePressed()
 {
-	if (!gIsPanning && !gIsZooming)
+	if (!gIsPanning)
 	{
-		// if (isMouseOverZoomButton(true))
-		// {
-		// 	gIsZooming = true;
-		// 	gZoomAmount = 0.02;
-		// }
-		// else if (isMouseOverZoomButton(false))
-		// {
-		// 	gIsZooming = true;
-		// 	gZoomAmount = -0.02;
-		// }
-		{
-			gPanInitialMouseView = gView.clone();
-			gPanInitialMouseWorldPos = gView.screenToWorldPos(getMousePos());
-			gIsPanning = true;
-		}
+		gPanInitialMouseView = gView.clone();
+		gPanInitialMouseWorldPos = gView.screenToWorldPos(getMousePos());
+		gIsPanning = true;
 	}
 }
 
 function mouseReleased()
 {
 	gIsPanning = false;
-	gIsZooming = false;
 }
+
+function mouseWheel(event) 
+{
+	if (!gIsPanning)
+	{
+		gIsZooming = true;
+
+		var maxZoomAmount = 1.0;
+		gZoomAmount = Math.max(-maxZoomAmount, Math.min(maxZoomAmount, -event.delta / 200.0));
+
+		gZoomInitialMouseView = gView.clone();
+		gZoomInitialMouseWorldPos = gView.screenToWorldPos(getMousePos());
+	}
+
+	return false;
+  }

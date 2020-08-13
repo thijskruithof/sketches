@@ -9,7 +9,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
   <title>Sketch Labs</title>
 
-  <script src="libs/p5.min.js"></script>
+  <script src="libs/p5.js"></script>
   <script src="libs/victor.min.js"></script>
   <script src="libs/seedrandom.min.js"></script>
   <script src="libs/ccapture.all.min.js"></script>
@@ -90,15 +90,15 @@
         document.getElementById("navigationBar").style.display = "flex";
 
         // Disble default browser pinch zooming
-        document.addEventListener(
-          'wheel',
-          function touchHandler(e) {
-            if (e.ctrlKey) {
-            e.preventDefault();
-            }
-          },
-          { passive: false }
-          );
+        // document.addEventListener(
+        //   'wheel',
+        //   function touchHandler(e) {
+        //     if (e.ctrlKey) {
+        //     e.preventDefault();
+        //     }
+        //   },
+        //   { passive: false }
+        //   );
 
       }
       // currentSketchIndex == -1?

@@ -577,35 +577,11 @@ function getMousePos()
 	return new Victor(mouseX, mouseY);
 }
 
-function isMouseOverZoomButton(zoomIn)
-{
-	var buttonX = 100;
-	var buttonY = zoomIn ? (gRenderHeight-200) : (gRenderHeight-100);	
-
-	var dist = getMousePos().subtract(new Victor(buttonX, buttonY)).length();
-	return dist <= 75;
-}
-
 
 var drawUImouseWasPressed = false;
 
 function drawUI()
 {
-	strokeWeight(1);
-	stroke(0,0,0);
-	fill(255,255, !gIsPanning && isMouseOverZoomButton(false) ? 0 : 255);
-	circle(100, gRenderHeight-100, 75);
-	fill(255,255, !gIsPanning && isMouseOverZoomButton(true) ? 0 : 255);
-	circle(100, gRenderHeight-200, 75);
-
-	fill(0,0,0);
-	noStroke();
-	textAlign(CENTER, CENTER);
-	textStyle(NORMAL);
-	textSize(50);
-	text('+', 100, gRenderHeight-200+4);
-	text('-', 100, gRenderHeight-100);
-
 	var buttonPos = new Victor(gRenderWidth - 30, 86);
 	var on = (getMousePos().distance(buttonPos) <= 32.0);
 
@@ -618,7 +594,6 @@ function drawUI()
 	image(on ? gOptionsButtonOn : gOptionsButtonOff, 0,0);
 	imageMode(CORNER);
 
-
 	if (!drawUImouseWasPressed && mouseIsPressed && on)
 		gTweakPane.hidden = !gTweakPane.hidden;
 
@@ -629,17 +604,16 @@ function mousePressed()
 {
 	if (!gIsPanning && !gIsZooming)
 	{
-		if (isMouseOverZoomButton(true))
-		{
-			gIsZooming = true;
-			gZoomAmount = 0.02;
-		}
-		else if (isMouseOverZoomButton(false))
-		{
-			gIsZooming = true;
-			gZoomAmount = -0.02;
-		}
-		else 
+		// if (isMouseOverZoomButton(true))
+		// {
+		// 	gIsZooming = true;
+		// 	gZoomAmount = 0.02;
+		// }
+		// else if (isMouseOverZoomButton(false))
+		// {
+		// 	gIsZooming = true;
+		// 	gZoomAmount = -0.02;
+		// }
 		{
 			gPanInitialMouseView = gView.clone();
 			gPanInitialMouseWorldPos = gView.screenToWorldPos(getMousePos());

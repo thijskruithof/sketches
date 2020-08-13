@@ -22,7 +22,8 @@ const gMaps = [
 	{ 
 		title: "Testing grid", 
 		tileSize: 256, 
-		numTilesPerAxisLod0: 16, 
+		numTilesXLod0: 16, 
+		numTilesYLod0: 16,
 		numLods: 5, 
 		tileFilename: tile => { 
 			return "sketches/939b106b/grid/" + (
@@ -35,11 +36,12 @@ const gMaps = [
 	{ 
 		title: "Mars", 
 		tileSize: 512, 
-		numTilesPerAxisLod0: 32, 
-		numLods: 6, 
+		numTilesXLod0: 64, 
+		numTilesYLod0: 32,
+		numLods: 7, 
 		tileFilename: tile => { 
 			return "sketches/939b106b/mars/" + tile.lod.toString() + "/" +
-				((tile.lod == gMap.numLods-1) ? "0/0.webp" : (tile.cellIndex.y.toString() + "/" + tile.cellIndex.x.toString() + ".webp")); 
+				((tile.lod == gMap.numLods-1) ? "0/0.jpg" : (tile.cellIndex.y.toString() + "/" + tile.cellIndex.x.toString() + ".jpg")); 
 		} 
 
 	},
@@ -149,7 +151,7 @@ class View
 	{
 		// Limit scale
 		var minScale = 1.0/gMap.tileSize;
-		var maxScale = gMap.numTilesPerAxisLod0 / Math.max(this.screenRect.size.x, this.screenRect.size.y);
+		var maxScale = Math.min(gMap.numTilesXLod0 / this.screenRect.size.x, gMap.numTilesYLod0 / this.screenRect.size.y);
 		this.worldScale = Math.min(Math.max(this.worldScale, minScale), maxScale);
 
 		// Limit panning
@@ -165,7 +167,7 @@ class View
 		// Min world center: when 0,0 in world is placed at 0,0 on screen
 		var minWorldCenter = this.screenRect.center.clone().multiply(new Victor(this.worldScale, this.worldScale));
 		// Max world center: when N,N in world is placed at W,H on screen
-		var maxWorldCenter = new Victor(gMap.numTilesPerAxisLod0, gMap.numTilesPerAxisLod0).subtract(minWorldCenter);
+		var maxWorldCenter = new Victor(gMap.numTilesXLod0, gMap.numTilesYLod0).subtract(minWorldCenter);
 
 		this.worldCenter = new Victor(
 			Math.max(minWorldCenter.x, Math.min(maxWorldCenter.x, this.worldCenter.x)),
@@ -190,6 +192,7 @@ class Tile
 		this.childIndex = childIndex.clone();
 
 		this.state = ETileState.unloaded;
+		this.valid = (worldRect.min.x < gMap.numTilesXLod0) && (worldRect.min.y < gMap.numTilesYLod0);
 		this.image = null;
 		this.imagePath = gMap.tileFilename(this);
 		this.isVisible = false;
@@ -227,8 +230,14 @@ class TileGrid
 
 		var result = [];
 		for (var y=tl.y; y<=br.y; ++y)
+		{
 			for (var x=tl.x; x<=br.x; ++x)
-				result.push(this.tiles[y*this.numTilesPerAxis+x]);
+			{
+				var tile = this.tiles[y*this.numTilesPerAxis+x];
+				if (tile.valid == true)
+					result.push(tile);
+			}
+		}
 
 		return result;
 	}
@@ -279,11 +288,11 @@ function visitTileParents(tile, visitor)
 
 function visitTileChildren(tile, visitor)
 {
-	if (tile == null)
+	if (tile == null || tile.valid == false)
 		return;
 	
 	visitor(tile);
-	for (var i=0; i<tile.children.length; ++i)
+	for (var i=0; i<tile.children.length; ++i)	
 		visitTileChildren(tile.children[i], visitor);
 }
 
@@ -397,7 +406,8 @@ function selectMap(map)
 		gTileGrids.push(new TileGrid(lod, Math.pow(2,(gMap.numLods-1)-lod)));
 
 	// Create our tree of tiles
-	gRootTile = new Tile(null, gMap.numLods-1, new Rect(new Victor(0,0), new Victor(gMap.numTilesPerAxisLod0,gMap.numTilesPerAxisLod0)), new Victor(0,0), new Victor(0,0));
+	var maxTilesPerAxisLod0 = Math.max(gMap.numTilesXLod0, gMap.numTilesYLod0);
+	gRootTile = new Tile(null, gMap.numLods-1, new Rect(new Victor(0,0), new Victor(maxTilesPerAxisLod0, maxTilesPerAxisLod0)), new Victor(0,0), new Victor(0,0));
 	gTileGrids[gMap.numLods-1].addTile(gRootTile);
 	createTileChildrenRecursive(gRootTile);
 }

@@ -247,11 +247,14 @@ var gIsPanning = false;
 var gPanInitialMouseWorldPos;
 var gPanInitialMouseView;
 var gIsZooming = false;
-var gZoomAmount;
+var gDesiredZoomAmount = 0;
+var gCurrentZoomAmount = 0;
 var gZoomInitialMouseScreenPos;
 var gZoomInitialMouseWorldPos;
 var gZoomInitialMouseView;
 
+// Rendering
+var gTileShader;
 
 // Streaming state
 var gNumTilesBeingLoaded = 0;
@@ -415,6 +418,15 @@ function selectMap(map)
 }
 
 
+function preload()
+{
+	gOptionsButtonOn = loadImage("sketches/939b106b/options_on.png");
+	gOptionsButtonOff = loadImage("sketches/939b106b/options_off.png");
+
+	gTileShader = loadShader('sketches/939b106b/tile.vert', 'sketches/939b106b/tile.frag');
+}
+
+
 function setup() 
 {
 	var cnv = createCanvas(window.innerWidth, window.innerHeight);
@@ -453,8 +465,7 @@ function setup()
 	folderStreaming.addInput(gDebugSettings, 'loadOneByOne', {label: "Load one by one"});
 	folderStreaming.addInput(gDebugSettings, 'showTileMiniMap', {label: "Show mini map"});
 
-	gOptionsButtonOn = loadImage("sketches/939b106b/options_on.png");
-	gOptionsButtonOff = loadImage("sketches/939b106b/options_off.png");
+
 }
 
 
@@ -526,10 +537,10 @@ function draw()
 	}
 	if (gIsZooming)
 	{	
-		var factor = pow(2, -gZoomAmount);
+		gCurrentZoomAmount += (gDesiredZoomAmount - gCurrentZoomAmount)*0.2; 
 
 		// Adjust scale
-		gView.worldScale *= factor;
+		gView.worldScale = gZoomInitialMouseView.worldScale * gCurrentZoomAmount;
 
 		// Force limits before adjusting center, to assure we're not applying more or less scale than possible
 		gView.applyViewLimits();
@@ -539,7 +550,9 @@ function draw()
 		var scalePivotOffset = gZoomInitialMouseWorldPos.clone().subtract(gZoomInitialMouseView.worldCenter).subtract(screenScalePivotOffset);
 
 		gView.worldCenter = gZoomInitialMouseView.worldCenter.clone().add(scalePivotOffset);
-		gIsZooming = false;
+
+		if (Math.abs(gCurrentZoomAmount - gDesiredZoomAmount) <= 0.01)		
+			gIsZooming = false;
 	}
 
 	gView.applyViewLimits();	
@@ -668,7 +681,7 @@ function drawTileMiniMap()
 	var viewRectTL = topLeft.clone().add(viewWorldRect.min.clone().multiply(tileScale));
 	var viewSize = viewWorldRect.size.clone().multiply(tileScale);
 	noFill();
-	stroke(255,255,0, 192);
+	stroke(0,0,0, 192);
 	rect(viewRectTL.x, viewRectTL.y, viewSize.x, viewSize.y);
 }
 
@@ -689,16 +702,19 @@ function mouseReleased()
 
 function mouseWheel(event) 
 {
-	if (!gIsPanning)
+	if (!gIsPanning && !gIsZooming)
 	{
-		gIsZooming = true;
+		var maxZoomAmount = 0.75;
+		var zoom_delta = Math.max(-maxZoomAmount, Math.min(maxZoomAmount, -event.delta / 200.0));
 
-		var maxZoomAmount = 1.0;
-		gZoomAmount = Math.max(-maxZoomAmount, Math.min(maxZoomAmount, -event.delta / 200.0));
+		gCurrentZoomAmount = 1;		
+		gDesiredZoomAmount = pow(2, -zoom_delta);
 
 		gZoomInitialMouseView = gView.clone();
 		gZoomInitialMouseScreenPos = getMousePos();
 		gZoomInitialMouseWorldPos = gView.screenToWorldPos(gZoomInitialMouseScreenPos);
+		
+		gIsZooming = true;		
 	}
 
 	return false;

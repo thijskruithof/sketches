@@ -59,19 +59,36 @@ cd ..
 
 cd ..
 
-echo Generating tiles! This can take a while.
+rem echo Generating albedo tiles! This can take a while.
 
-echo lod 0: 64x32 tiles @ 512
-d:\Work\Map\ImageMagick\magick convert Combined_Huger.png -monitor -crop 512x512 -set filename:tile "%%[fx:page.y/512]\\%%[fx:page.x/512]" +repage +adjoin -quality 80 "Images\\0\\%%[filename:tile].jpg"
-echo lod 1: 32x16 tiles @ 512
-d:\Work\Map\ImageMagick\magick convert Combined_Huger.png -monitor -resize "16384x8192" -crop 512x512 -set filename:tile "%%[fx:page.y/512]\\%%[fx:page.x/512]" +repage +adjoin -quality 80 "Images\\1\\%%[filename:tile].jpg"
-echo lod 2: 16x8 tiles @ 512
-d:\Work\Map\ImageMagick\magick convert Combined_Huger.png -monitor -resize "8192x4096" -crop 512x512 -set filename:tile "%%[fx:page.y/512]\\%%[fx:page.x/512]" +repage +adjoin -quality 80 "Images\\2\\%%[filename:tile].jpg"
-echo lod 3: 8x4 tiles @ 512
-d:\Work\Map\ImageMagick\magick convert Combined_Huger.png -monitor -resize "4096x2048" -crop 512x512 -set filename:tile "%%[fx:page.y/512]\\%%[fx:page.x/512]" +repage +adjoin -quality 80 "Images\\3\\%%[filename:tile].jpg"
-echo lod 4: 4x2 tiles @ 512
-d:\Work\Map\ImageMagick\magick convert Combined_Huger.png -monitor -resize "2048x1024" -crop 512x512 -set filename:tile "%%[fx:page.y/512]\\%%[fx:page.x/512]" +repage +adjoin -quality 80 "Images\\4\\%%[filename:tile].jpg"
-echo lod 5: 2x1 tiles @ 512
-d:\Work\Map\ImageMagick\magick convert Combined_Huger.png -monitor -resize "1024x512" -crop 512x512 -set filename:tile "%%[fx:page.y/512]\\%%[fx:page.x/512]" +repage +adjoin -quality 80 "Images\\5\\%%[filename:tile].jpg"
-echo lod 6: 1x1 tiles @ 512
-d:\Work\Map\ImageMagick\magick convert Combined_Huger.png -monitor -resize "512x256" -crop 512x512 -set filename:tile "%%[fx:page.y/512]\\%%[fx:page.x/512]" +repage +adjoin -background black -extent 512x512 -quality 80 "Images\\6\\%%[filename:tile].jpg"
+rem echo lod 0: 64x32 tiles @ 512
+rem d:\Work\Map\ImageMagick\magick convert Combined_Huger.png -monitor -crop 512x512 -set filename:tile "%%[fx:page.y/512]\\%%[fx:page.x/512]" +repage +adjoin -quality 80 "Images\\0\\%%[filename:tile].jpg"
+rem echo lod 1: 32x16 tiles @ 512
+rem d:\Work\Map\ImageMagick\magick convert Combined_Huger.png -monitor -resize "16384x8192" -crop 512x512 -set filename:tile "%%[fx:page.y/512]\\%%[fx:page.x/512]" +repage +adjoin -quality 80 "Images\\1\\%%[filename:tile].jpg"
+rem echo lod 2: 16x8 tiles @ 512
+rem d:\Work\Map\ImageMagick\magick convert Combined_Huger.png -monitor -resize "8192x4096" -crop 512x512 -set filename:tile "%%[fx:page.y/512]\\%%[fx:page.x/512]" +repage +adjoin -quality 80 "Images\\2\\%%[filename:tile].jpg"
+rem echo lod 3: 8x4 tiles @ 512
+rem d:\Work\Map\ImageMagick\magick convert Combined_Huger.png -monitor -resize "4096x2048" -crop 512x512 -set filename:tile "%%[fx:page.y/512]\\%%[fx:page.x/512]" +repage +adjoin -quality 80 "Images\\3\\%%[filename:tile].jpg"
+rem echo lod 4: 4x2 tiles @ 512
+rem d:\Work\Map\ImageMagick\magick convert Combined_Huger.png -monitor -resize "2048x1024" -crop 512x512 -set filename:tile "%%[fx:page.y/512]\\%%[fx:page.x/512]" +repage +adjoin -quality 80 "Images\\4\\%%[filename:tile].jpg"
+rem echo lod 5: 2x1 tiles @ 512
+rem d:\Work\Map\ImageMagick\magick convert Combined_Huger.png -monitor -resize "1024x512" -crop 512x512 -set filename:tile "%%[fx:page.y/512]\\%%[fx:page.x/512]" +repage +adjoin -quality 80 "Images\\5\\%%[filename:tile].jpg"
+rem echo lod 6: 1x1 tiles @ 512
+rem d:\Work\Map\ImageMagick\magick convert Combined_Huger.png -monitor -resize "512x256" -crop 512x512 -set filename:tile "%%[fx:page.y/512]\\%%[fx:page.x/512]" +repage +adjoin -background black -extent 512x512 -quality 80 "Images\\6\\%%[filename:tile].jpg"
+
+echo Generating elevation tiles! This can take a while.
+
+echo lod 0: elevation 64x32 tiles @ 256
+d:\Work\Map\ImageMagick\magick convert Elevation.png -monitor -resize "16384x8192" -crop 256x256 -set filename:tile "%%[fx:page.y/256]\\%%[fx:page.x/256]" +repage +adjoin -quality 70 "Images\\0\\%%[filename:tile]_e.jpg"
+echo lod 1: elevation 32x16 tiles @ 256
+d:\Work\Map\ImageMagick\magick convert Elevation.png -monitor -resize "8192x4096" -crop 256x256 -set filename:tile "%%[fx:page.y/256]\\%%[fx:page.x/256]" +repage +adjoin -quality 70 "Images\\1\\%%[filename:tile]_e.jpg"
+echo lod 2: elevation 16x8 tiles @ 256
+d:\Work\Map\ImageMagick\magick convert Elevation.png -monitor -resize "4096x2048" -crop 256x256 -set filename:tile "%%[fx:page.y/256]\\%%[fx:page.x/256]" +repage +adjoin -quality 70 "Images\\2\\%%[filename:tile]_e.jpg"
+echo lod 3: elevation 8x4 tiles @ 256
+d:\Work\Map\ImageMagick\magick convert Elevation.png -monitor -resize "2048x1024" -crop 256x256 -set filename:tile "%%[fx:page.y/256]\\%%[fx:page.x/256]" +repage +adjoin -quality 70 "Images\\3\\%%[filename:tile]_e.jpg"
+echo lod 4: elevation 4x2 tiles @ 256
+d:\Work\Map\ImageMagick\magick convert Elevation.png -monitor -resize "1024x512" -crop 256x256 -set filename:tile "%%[fx:page.y/256]\\%%[fx:page.x/256]" +repage +adjoin -quality 70 "Images\\4\\%%[filename:tile]_e.jpg"
+echo lod 5: elevation 2x1 tiles @ 256
+d:\Work\Map\ImageMagick\magick convert Elevation.png -monitor -resize "512x256" -crop 256x256 -set filename:tile "%%[fx:page.y/256]\\%%[fx:page.x/256]" +repage +adjoin -quality 70 "Images\\5\\%%[filename:tile]_e.jpg"
+echo lod 6: elevation 1x1 tiles @ 256
+d:\Work\Map\ImageMagick\magick convert Elevation.png -monitor -resize "256x128" -crop 256x256 -set filename:tile "%%[fx:page.y/256]\\%%[fx:page.x/256]" +repage +adjoin -background black -extent 256x256 -quality 70 "Images\\6\\%%[filename:tile]_e.jpg"

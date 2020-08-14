@@ -168,7 +168,7 @@ class View
 }
 
 
-const ETileState = { unloaded:0, loading:1, loaded:2 };
+const ETileLoadingState = { unloaded:0, loading:1, loaded:2 };
 
 
 class Tile
@@ -182,7 +182,7 @@ class Tile
 		this.cellIndex = cellIndex.clone();
 		this.childIndex = childIndex.clone();
 
-		this.state = ETileState.unloaded;
+		this.loadingState = ETileLoadingState.unloaded;
 		this.valid = (worldRect.min.x < gMap.numTilesXLod0) && (worldRect.min.y < gMap.numTilesYLod0);
 		this.image = null;
 		this.imagePath = gMap.tileFilename(this);
@@ -339,14 +339,14 @@ function updateTileLoading()
 	if (tile != null)
 	{
 		gNumTilesBeingLoaded++;
-		tile.state = ETileState.loading;
+		tile.loadingState = ETileLoadingState.loading;
 
 		loadImage(tile.imagePath, img => {
 			tile.image = img;
-			tile.state = ETileState.loaded;
+			tile.loadingState = ETileLoadingState.loaded;
 			gNumTilesBeingLoaded--;
 		}, evt => {
-			tile.state = ETileState.unloaded;
+			tile.loadingState = ETileLoadingState.unloaded;
 			gNumTilesBeingLoaded--;
 		});		
 	}
@@ -358,8 +358,8 @@ function updateTileUnloading()
 {
 	// For now immediately unload all tiles that are not visible.
 	visitTileChildren(gRootTile, tile => { 
-		if (!tile.isVisible && tile.state == ETileState.loaded)
-			tile.state = ETileState.unloaded;
+		if (!tile.isVisible && tile.loadingState == ETileLoadingState.loaded)
+			tile.loadingState = ETileLoadingState.unloaded;
 	});
 }
 
@@ -376,7 +376,7 @@ function getTilesToLoad()
 		tilesPerLod.push([]);	
 
 	visitTileChildren(gRootTile, tile => { 
-		if (tile.lod >= desiredLod && tile.isVisible && tile.state == ETileState.unloaded)
+		if (tile.lod >= desiredLod && tile.isVisible && tile.loadingState == ETileLoadingState.unloaded)
 			tilesPerLod[tile.lod].push(tile);
 	});
 
@@ -393,7 +393,7 @@ function selectMap(map)
 {
 	// Unload all images (if any)	
 	if (gRootTile != null)
-		visitTileChildren(gRootTile, tile => {tile.state = ETileState.unloaded;});
+		visitTileChildren(gRootTile, tile => {tile.loadingState = ETileLoadingState.unloaded;});
 
 	// Switch to new map
 	gMap = map;
@@ -487,7 +487,7 @@ function getVisibleTiles(desiredLod)
 		var tileImageRect = new Rect(new Victor(0,0), new Victor(gMap.tileSize, gMap.tileSize));
 
 		// Find a parent that is loaded
-		while (tile.lod < gMap.numLods-1 && tile.state != ETileState.loaded)
+		while (tile.lod < gMap.numLods-1 && tile.loadingState != ETileLoadingState.loaded)
 		{		
 			// Recalculate our image rect
 			var newImageRectSize = tileImageRect.size.clone().divide(new Victor(2,2));
@@ -559,7 +559,7 @@ function draw()
 		// Mark this tile as being visible, uncluding all its parents
 		visitTileParents(visibleTile.screenTile, tile => {tile.isVisible = true;});
 
-		if (visibleTile.sourceTile.state != ETileState.loaded)
+		if (visibleTile.sourceTile.loadingState != ETileLoadingState.loaded)
 			continue;
 
 		var screenRect = gView.worldToScreenRect(visibleTile.screenTile.worldRect);
@@ -576,7 +576,7 @@ function draw()
 
 	// Gather debug info
 	var numTilesLoaded = 0;
-	visitTileChildren(gRootTile, tile => { if (tile.state == ETileState.loaded) numTilesLoaded++;});
+	visitTileChildren(gRootTile, tile => { if (tile.loadingState == ETileLoadingState.loaded) numTilesLoaded++;});
 	
 	gDebugInfo.desiredLod = desiredLod;
 	gDebugInfo.numTilesVisible = visibleTiles.length;

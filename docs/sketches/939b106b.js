@@ -272,7 +272,8 @@ var gDebugInfo = {
 
 var gDebugSettings = {
 	mapIndex: 1,
-	loadOneByOne: false
+	loadOneByOne: false,
+	showTileMiniMap: false
 };
 
 
@@ -450,6 +451,7 @@ function setup()
 
 	var folderStreaming = gTweakPane.addFolder({ title: 'Streaming' });
 	folderStreaming.addInput(gDebugSettings, 'loadOneByOne', {label: "Load one by one"});
+	folderStreaming.addInput(gDebugSettings, 'showTileMiniMap', {label: "Show mini map"});
 
 	gOptionsButtonOn = loadImage("sketches/939b106b/options_on.png");
 	gOptionsButtonOff = loadImage("sketches/939b106b/options_off.png");
@@ -599,6 +601,11 @@ var drawUImouseWasPressed = false;
 
 function drawUI()
 {
+	// Draw mini map
+	if (gDebugSettings.showTileMiniMap)
+		drawTileMiniMap();
+
+	// Draw toggle button
 	var buttonPos = new Victor(gRenderWidth - 30, 86);
 	var on = (getMousePos().distance(buttonPos) <= 32.0);
 
@@ -615,6 +622,54 @@ function drawUI()
 		gTweakPane.hidden = !gTweakPane.hidden;
 
 	drawUImouseWasPressed = mouseIsPressed;
+}
+
+function drawTileMiniMap()
+{
+	const tileScreenSize = 6;
+	const size = gRootTile.worldRect.size;
+	const w = size.x*tileScreenSize;
+	const h = size.y*tileScreenSize;
+
+	var topLeft = new Victor(gRenderWidth - w - 8, gRenderHeight - h - 8);
+
+	var tileScale = new Victor(tileScreenSize, tileScreenSize);
+
+	// Back
+	// strokeWeight(1.0);
+	// stroke(255,255,255, 255);
+	// //fill(0,0,0, 255);
+	// rect(topLeft.x-1, topLeft.y-1, w+2, h+2);
+
+	// Draw tiles
+	noStroke();
+
+	visitTileChildren(gRootTile, tile => {
+		if (!tile.valid)
+			return;
+		if (tile.loadingState == ETileLoadingState.unloaded)
+			return;
+
+		var intensity = 255 - 255*tile.lod/gMap.numLods;
+
+		if (tile.loadingState == ETileLoadingState.loading)
+			fill(intensity, 0, 0, 255);
+		else
+			fill(0, intensity, 0, 255);
+
+		var tl = topLeft.clone().add(tile.worldRect.min.clone().multiply(tileScale));
+		var size = tile.worldRect.size.clone().multiply(tileScale);
+
+		rect(tl.x, tl.y, size.x, size.y);
+	});
+
+	// Draw screen
+	var viewWorldRect = gView.worldRect;
+	var viewRectTL = topLeft.clone().add(viewWorldRect.min.clone().multiply(tileScale));
+	var viewSize = viewWorldRect.size.clone().multiply(tileScale);
+	noFill();
+	stroke(255,255,0, 192);
+	rect(viewRectTL.x, viewRectTL.y, viewSize.x, viewSize.y);
 }
 
 function mousePressed()

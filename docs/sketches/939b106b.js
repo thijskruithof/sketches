@@ -248,6 +248,7 @@ var gPanInitialMouseWorldPos;
 var gPanInitialMouseView;
 var gIsZooming = false;
 var gZoomAmount;
+var gZoomInitialMouseScreenPos;
 var gZoomInitialMouseWorldPos;
 var gZoomInitialMouseView;
 
@@ -524,13 +525,22 @@ function draw()
 	if (gIsZooming)
 	{	
 		var factor = pow(2, -gZoomAmount);
-		var d = gZoomInitialMouseWorldPos.clone().subtract(gZoomInitialMouseView.worldCenter);
+
+		// Adjust scale
 		gView.worldScale *= factor;
-		//gView.worldCenter = gZoom InitialMouseView.worldCenter.clone().subtract(d.multiply(new Victor(factor, factor)));
+
+		// Force limits before adjusting center, to assure we're not applying more or less scale than possible
+		gView.applyViewLimits();
+
+		// Adjust world center (to take scaling pivot into account)
+		var screenScalePivotOffset = gZoomInitialMouseScreenPos.clone().subtract(gZoomInitialMouseView.screenRect.center).multiply(new Victor(gView.worldScale, gView.worldScale));
+		var scalePivotOffset = gZoomInitialMouseWorldPos.clone().subtract(gZoomInitialMouseView.worldCenter).subtract(screenScalePivotOffset);
+
+		gView.worldCenter = gZoomInitialMouseView.worldCenter.clone().add(scalePivotOffset);
 		gIsZooming = false;
 	}
 
-	gView.applyViewLimits();
+	gView.applyViewLimits();	
 
 	background(255, 255, 255);
 
@@ -593,7 +603,7 @@ function drawUI()
 	var on = (getMousePos().distance(buttonPos) <= 32.0);
 
 	var desiredAngle = gTweakPane.hidden ? 0 : PI;
-	gOptionsButtonAngle = gOptionsButtonAngle + (desiredAngle - gOptionsButtonAngle)*0.1;
+	gOptionsButtonAngle = gOptionsButtonAngle + (desiredAngle - gOptionsButtonAngle)*0.2;
 
 	translate(buttonPos.x, buttonPos.y);
 	rotate(gOptionsButtonAngle);
@@ -632,7 +642,8 @@ function mouseWheel(event)
 		gZoomAmount = Math.max(-maxZoomAmount, Math.min(maxZoomAmount, -event.delta / 200.0));
 
 		gZoomInitialMouseView = gView.clone();
-		gZoomInitialMouseWorldPos = gView.screenToWorldPos(getMousePos());
+		gZoomInitialMouseScreenPos = getMousePos();
+		gZoomInitialMouseWorldPos = gView.screenToWorldPos(gZoomInitialMouseScreenPos);
 	}
 
 	return false;

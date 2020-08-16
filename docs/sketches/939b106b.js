@@ -127,6 +127,11 @@ class View
 		return pos.clone().subtract(this.worldCenter).divide(new Victor(this.worldScale, this.worldScale)).add(this.screenRect.center);
 	}
 
+	worldToScreenScale(scale)
+	{
+		return scale / this.worldScale;
+	}
+
 	worldToScreenRect(rect)
 	{
 		return new Rect(this.worldToScreenPos(rect.min), this.worldToScreenPos(rect.max));
@@ -135,6 +140,11 @@ class View
 	screenToWorldPos(pos)
 	{
 		return pos.clone().subtract(this.screenRect.center).multiply(new Victor(this.worldScale, this.worldScale)).add(this.worldCenter);
+	}
+
+	screenToWorldScale(scale)
+	{
+		return scale * this.worldScale;
 	}
 
 	screenToWorldRect(rect)
@@ -634,16 +644,20 @@ function drawUI()
 
 	// Draw toggle button
 	var buttonPos = new Victor(gRenderWidth - 30, 86);
-	var on = (getMousePos().distance(buttonPos) <= 32.0);
+	var buttonSize = 30.0;
+	var on = (getMousePos().distance(buttonPos) <= buttonSize);
 
 	var desiredAngle = gTweakPane.hidden ? 0 : PI;
 	gOptionsButtonAngle = gOptionsButtonAngle + (desiredAngle - gOptionsButtonAngle)*0.2;
 
-	translate(buttonPos.x, buttonPos.y);
-	rotate(gOptionsButtonAngle);
-	imageMode(CENTER);
-	image(on ? gOptionsButtonOn : gOptionsButtonOff, 0,0);
-	imageMode(CORNER);
+	var worldButtonPos = gView.screenToWorldPos(buttonPos);
+	var worldButtonSize = gView.screenToWorldScale(buttonSize);
+	push();
+	translate(worldButtonPos.x, worldButtonPos.y);
+	rotateZ(gOptionsButtonAngle);
+	texture(on ? gOptionsButtonOn : gOptionsButtonOff);
+	plane(worldButtonSize,worldButtonSize);
+	pop();
 
 	if (!drawUImouseWasPressed && mouseIsPressed && on)
 		gTweakPane.hidden = !gTweakPane.hidden;

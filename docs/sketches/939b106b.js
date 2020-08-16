@@ -42,8 +42,11 @@ const gMaps = [
 		albedoImagePath: tile => { 
 			return "sketches/939b106b/mars/" + tile.lod.toString() + "/" +
 				((tile.lod == gMap.numLods-1) ? "0/0.jpg" : (tile.cellIndex.y.toString() + "/" + tile.cellIndex.x.toString() + ".jpg")); 
+		},
+		elevationImagePath: tile => { 
+			return "sketches/939b106b/mars/" + tile.lod.toString() + "/" +
+				((tile.lod == gMap.numLods-1) ? "0/0_e.jpg" : (tile.cellIndex.y.toString() + "/" + tile.cellIndex.x.toString() + "_e.jpg")); 
 		} 
-
 	},
 ];
 
@@ -207,6 +210,7 @@ class Tile
 		this.isVisible = false;
 
 		this.albedoImage = new TileImage(gMap.albedoImagePath(this));
+		this.elevationImage = new TileImage(gMap.elevationImagePath(this));
 	}
 }
 
@@ -278,7 +282,7 @@ var gTileShader;
 const gFOVy = (Math.PI/180.0)*60.0;
 
 // Streaming state
-var gNumTilesBeingLoaded = 0;
+var gNumTileImagesBeingLoaded = 0;
 
 // UI
 var gOptionsButtonOn;
@@ -351,7 +355,7 @@ function createTileChildrenRecursive(tile)
 
 function updateTileLoading()
 {
-	if (gDebugSettings.loadOneByOne && gNumTilesBeingLoaded > 0)
+	if (gDebugSettings.loadOneByOne && gNumTileImagesBeingLoaded > 0)
 		return;
 
 	var tilesToLoad = getTilesToLoad()
@@ -365,7 +369,7 @@ function updateTileLoading()
 		{
 			tile.albedoImage.loadingState = ETileLoadingState.loading;
 
-			gNumTilesBeingLoaded++;
+			gNumTileImagesBeingLoaded++;
 
 			loadImage(tile.albedoImage.imagePath, 
 				(function(tile) 
@@ -374,14 +378,14 @@ function updateTileLoading()
 						{
 							tile.albedoImage.image = img;
 							tile.albedoImage.loadingState = ETileLoadingState.loaded;
-							gNumTilesBeingLoaded--;
+							gNumTileImagesBeingLoaded--;
 						};
 				})(tile), 
 				(function(tile)
 				{
 					return evt => {
 						tile.albedoImage.loadingState = ETileLoadingState.unloaded;
-						gNumTilesBeingLoaded--;
+						gNumTileImagesBeingLoaded--;
 					};					
 				})(tile)
 			);
@@ -648,7 +652,7 @@ function draw()
 	gDebugInfo.desiredLod = desiredLod;
 	gDebugInfo.numTilesVisible = visibleTiles.length;
 	gDebugInfo.numTilesLoaded = numTilesLoaded;
-	gDebugInfo.numTilesLoading = gNumTilesBeingLoaded;
+	gDebugInfo.numTilesLoading = gNumTileImagesBeingLoaded;
 
 	drawUI();
 

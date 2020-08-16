@@ -25,7 +25,7 @@ const gMaps = [
 		numTilesXLod0: 16, 
 		numTilesYLod0: 16,
 		numLods: 5, 
-		tileFilename: tile => { 
+		albedoImagePath: tile => { 
 			return "sketches/939b106b/grid/" + (
 				(tile.lod == gMap.numLods-1) ? 
 				(tile.lod.toString()+".jpg") : 
@@ -39,7 +39,7 @@ const gMaps = [
 		numTilesXLod0: 64, 
 		numTilesYLod0: 32,
 		numLods: 7, 
-		tileFilename: tile => { 
+		albedoImagePath: tile => { 
 			return "sketches/939b106b/mars/" + tile.lod.toString() + "/" +
 				((tile.lod == gMap.numLods-1) ? "0/0.jpg" : (tile.cellIndex.y.toString() + "/" + tile.cellIndex.x.toString() + ".jpg")); 
 		} 
@@ -181,6 +181,17 @@ class View
 const ETileLoadingState = { unloaded:0, loading:1, loaded:2 };
 
 
+class TileImage
+{
+	constructor(filePath)
+	{
+		this.loadingState = ETileLoadingState.unloaded;
+		this.image = null;
+		this.imagePath = filePath;
+	}
+}
+
+
 class Tile
 {
 	constructor(parent, lod, worldRect, cellIndex, childIndex)
@@ -192,11 +203,10 @@ class Tile
 		this.cellIndex = cellIndex.clone();
 		this.childIndex = childIndex.clone();
 
-		this.loadingState = ETileLoadingState.unloaded;
 		this.valid = (worldRect.min.x < gMap.numTilesXLod0) && (worldRect.min.y < gMap.numTilesYLod0);
-		this.image = null;
-		this.imagePath = gMap.tileFilename(this);
 		this.isVisible = false;
+
+		this.albedoImage = new TileImage(gMap.albedoImagePath(this));
 	}
 }
 
@@ -345,25 +355,40 @@ function updateTileLoading()
 		return;
 
 	var tilesToLoad = getTilesToLoad()
-	if (tilesToLoad.length == 0)
-		return;
 
-	// Simply only load the first one from the list
-	var tile = tilesToLoad[0]
-
-	if (tile != null)
+	for (var i=0; i<tilesToLoad.length; ++i)
 	{
-		gNumTilesBeingLoaded++;
-		tile.loadingState = ETileLoadingState.loading;
+		var tile = tilesToLoad[i];
 
-		loadImage(tile.imagePath, img => {
-			tile.image = img;
-			tile.loadingState = ETileLoadingState.loaded;
-			gNumTilesBeingLoaded--;
-		}, evt => {
-			tile.loadingState = ETileLoadingState.unloaded;
-			gNumTilesBeingLoaded--;
-		});		
+		// Do we have to load the albedo?
+		if (tile.albedoImage.loadingState == ETileLoadingState.unloaded)
+		{
+			tile.albedoImage.loadingState = ETileLoadingState.loading;
+
+			gNumTilesBeingLoaded++;
+
+			loadImage(tile.albedoImage.imagePath, 
+				(function(tile) 
+				{ 
+					return img =>
+						{
+							tile.albedoImage.image = img;
+							tile.albedoImage.loadingState = ETileLoadingState.loaded;
+							gNumTilesBeingLoaded--;
+						};
+				})(tile), 
+				(function(tile)
+				{
+					return evt => {
+						tile.albedoImage.loadingState = ETileLoadingState.unloaded;
+						gNumTilesBeingLoaded--;
+					};					
+				})(tile)
+			);
+		}
+
+		if (gDebugSettings.loadOneByOne)
+		 	break;
 	}
 }
 
@@ -373,8 +398,11 @@ function updateTileUnloading()
 {
 	// For now immediately unload all tiles that are not visible.
 	visitTileChildren(gRootTile, tile => { 
-		if (!tile.isVisible && tile.loadingState == ETileLoadingState.loaded)
-			tile.loadingState = ETileLoadingState.unloaded;
+		if (!tile.isVisible)
+		{
+			if (tile.albedoImage.loadingState == ETileLoadingState.loaded)
+				tile.albedoImage.loadingState = ETileLoadingState.unloaded;
+		}
 	});
 }
 
@@ -391,7 +419,7 @@ function getTilesToLoad()
 		tilesPerLod.push([]);	
 
 	visitTileChildren(gRootTile, tile => { 
-		if (tile.lod >= desiredLod && tile.isVisible && tile.loadingState == ETileLoadingState.unloaded)
+		if (tile.lod >= desiredLod && tile.isVisible && (tile.albedoImage.loadingState == ETileLoadingState.unloaded))
 			tilesPerLod[tile.lod].push(tile);
 	});
 
@@ -408,7 +436,7 @@ function selectMap(map)
 {
 	// Unload all images (if any)	
 	if (gRootTile != null)
-		visitTileChildren(gRootTile, tile => {tile.loadingState = ETileLoadingState.unloaded;});
+		visitTileChildren(gRootTile, tile => { tile.albedoImage.loadingState = ETileLoadingState.unloaded; });
 
 	// Switch to new map
 	gMap = map;
@@ -509,7 +537,7 @@ function getVisibleTiles(desiredLod)
 		var tileImageRect = new Rect(new Victor(0,0), new Victor(gMap.tileSize, gMap.tileSize));
 
 		// Find a parent that is loaded
-		while (tile.lod < gMap.numLods-1 && tile.loadingState != ETileLoadingState.loaded)
+		while (tile.lod < gMap.numLods-1 && tile.albedoImage.loadingState != ETileLoadingState.loaded)
 		{		
 			// Recalculate our image rect
 			var newImageRectSize = tileImageRect.size.clone().divide(new Victor(2,2));
@@ -593,11 +621,11 @@ function draw()
 		// Mark this tile as being visible, uncluding all its parents
 		visitTileParents(visibleTile.screenTile, tile => {tile.isVisible = true;});
 
-		if (visibleTile.sourceTile.loadingState != ETileLoadingState.loaded)
+		if (visibleTile.sourceTile.albedoImage.loadingState != ETileLoadingState.loaded)
 			continue;
 
 		gTileShader.setUniform('cellIndex', [visibleTile.screenTile.cellIndex.x, visibleTile.screenTile.cellIndex.y]);
-		gTileShader.setUniform('texAlbedo', visibleTile.sourceTile.image);
+		gTileShader.setUniform('texAlbedo', visibleTile.sourceTile.albedoImage.image);
 		gTileShader.setUniform('uSourceTextureTopLeft', [visibleTile.sourceTileRect.min.x / gMap.tileSize, visibleTile.sourceTileRect.min.y / gMap.tileSize]);
 		gTileShader.setUniform('uSourceTextureSize', [visibleTile.sourceTileRect.size.x / gMap.tileSize, visibleTile.sourceTileRect.size.y / gMap.tileSize]);
 
@@ -615,7 +643,7 @@ function draw()
 
 	// Gather debug info
 	var numTilesLoaded = 0;
-	visitTileChildren(gRootTile, tile => { if (tile.loadingState == ETileLoadingState.loaded) numTilesLoaded++;});
+	visitTileChildren(gRootTile, tile => { if (tile.albedoImage.loadingState == ETileLoadingState.loaded) numTilesLoaded++;});
 	
 	gDebugInfo.desiredLod = desiredLod;
 	gDebugInfo.numTilesVisible = visibleTiles.length;
@@ -688,12 +716,12 @@ function drawTileMiniMap()
 	visitTileChildren(gRootTile, tile => {
 		if (!tile.valid)
 			return;
-		if (tile.loadingState == ETileLoadingState.unloaded)
+		if (tile.albedoImage.loadingState == ETileLoadingState.unloaded)
 			return;
 
 		var intensity = 255 - 255*tile.lod/gMap.numLods;
 
-		if (tile.loadingState == ETileLoadingState.loading)
+		if (tile.albedoImage.loadingState == ETileLoadingState.loading)
 			fill(intensity, 0, 0, 255);
 		else
 			fill(0, intensity, 0, 255);

@@ -1,14 +1,15 @@
 precision mediump float;
 
-varying vec2 vTexCoord;
+
+varying vec2 vAlbedoUV;
+varying vec2 vElevationUV;
 
 uniform vec2 cellIndex;
 
-uniform sampler2D texAlbedo;
+uniform sampler2D uAlbedoTexture;
+uniform sampler2D uElevationTexture;
 
 void main() 
 {
-    vec2 uv = vTexCoord;
-
-    gl_FragColor = texture2D(texAlbedo, uv);
+    gl_FragColor = texture2D(uElevationTexture, vElevationUV);
 }

@@ -192,6 +192,32 @@ class TileImage
 		this.image = null;
 		this.imagePath = filePath;
 	}
+
+	startLoading()
+	{
+		this.loadingState = ETileLoadingState.loading;
+
+		gNumTileImagesBeingLoaded++;
+
+		loadImage(this.imagePath, 
+			(function(tileImage) 
+			{ 
+				return img =>
+					{
+						tileImage.image = img;
+						tileImage.loadingState = ETileLoadingState.loaded;
+						gNumTileImagesBeingLoaded--;
+					};
+			})(this), 
+			(function(tileImage)
+			{
+				return evt => {
+					tileImage.loadingState = ETileLoadingState.unloaded;
+					gNumTileImagesBeingLoaded--;
+				};					
+			})(this)
+		);
+	}
 }
 
 
@@ -366,30 +392,11 @@ function updateTileLoading()
 
 		// Do we have to load the albedo?
 		if (tile.albedoImage.loadingState == ETileLoadingState.unloaded)
-		{
-			tile.albedoImage.loadingState = ETileLoadingState.loading;
+			tile.albedoImage.startLoading();
 
-			gNumTileImagesBeingLoaded++;
-
-			loadImage(tile.albedoImage.imagePath, 
-				(function(tile) 
-				{ 
-					return img =>
-						{
-							tile.albedoImage.image = img;
-							tile.albedoImage.loadingState = ETileLoadingState.loaded;
-							gNumTileImagesBeingLoaded--;
-						};
-				})(tile), 
-				(function(tile)
-				{
-					return evt => {
-						tile.albedoImage.loadingState = ETileLoadingState.unloaded;
-						gNumTileImagesBeingLoaded--;
-					};					
-				})(tile)
-			);
-		}
+		// Do we have to load the elevation?
+		if (tile.elevationImage.loadingState == ETileLoadingState.unloaded)
+			tile.elevationImage.startLoading();
 
 		if (gDebugSettings.loadOneByOne)
 		 	break;
@@ -406,6 +413,9 @@ function updateTileUnloading()
 		{
 			if (tile.albedoImage.loadingState == ETileLoadingState.loaded)
 				tile.albedoImage.loadingState = ETileLoadingState.unloaded;
+
+			if (tile.elevationImage.loadingState == ETileLoadingState.loaded)
+				tile.elevationImage.loadingState = ETileLoadingState.unloaded;				
 		}
 	});
 }
@@ -423,7 +433,7 @@ function getTilesToLoad()
 		tilesPerLod.push([]);	
 
 	visitTileChildren(gRootTile, tile => { 
-		if (tile.lod >= desiredLod && tile.isVisible && (tile.albedoImage.loadingState == ETileLoadingState.unloaded))
+		if (tile.lod >= desiredLod && tile.isVisible && (tile.albedoImage.loadingState == ETileLoadingState.unloaded || tile.elevationImage.loadingState == ETileLoadingState.unloaded))
 			tilesPerLod[tile.lod].push(tile);
 	});
 
@@ -440,7 +450,10 @@ function selectMap(map)
 {
 	// Unload all images (if any)	
 	if (gRootTile != null)
-		visitTileChildren(gRootTile, tile => { tile.albedoImage.loadingState = ETileLoadingState.unloaded; });
+		visitTileChildren(gRootTile, tile => { 
+			tile.albedoImage.loadingState = ETileLoadingState.unloaded; 
+			tile.elevationImage.loadingState = ETileLoadingState.unloaded;
+		});
 
 	// Switch to new map
 	gMap = map;
@@ -536,22 +549,41 @@ function getVisibleTiles(desiredLod)
 	var tiles = [];
 	for (var i=0; i<desiredTilesOnScreen.length; ++i)
 	{
-		var tile = desiredTilesOnScreen[i];
+		var albedoTile = desiredTilesOnScreen[i];
+		var elevationTile = desiredTilesOnScreen[i];
 
-		var tileImageRect = new Rect(new Victor(0,0), new Victor(gMap.tileSize, gMap.tileSize));
+		var albedoTileImageRect = new Rect(new Victor(0,0), new Victor(gMap.tileSize, gMap.tileSize));
+		var elevationTileImageRect = albedoTileImageRect.clone();
 
-		// Find a parent that is loaded
-		while (tile.lod < gMap.numLods-1 && tile.albedoImage.loadingState != ETileLoadingState.loaded)
+		// Find a parent tile image that is loaded
+		while (albedoTile.lod < gMap.numLods-1 && albedoTile.albedoImage.loadingState != ETileLoadingState.loaded)
 		{		
 			// Recalculate our image rect
-			var newImageRectSize = tileImageRect.size.clone().divide(new Victor(2,2));
-			var newImageRectOffset = tileImageRect.min.clone().divide(new Victor(2,2)).add(tile.childIndex.clone().multiply(new Victor(gMap.tileSize/2, gMap.tileSize/2)));
-			tileImageRect = new Rect(newImageRectOffset, newImageRectOffset.clone().add(newImageRectSize));
+			var newImageRectSize = albedoTileImageRect.size.clone().divide(new Victor(2,2));
+			var newImageRectOffset = albedoTileImageRect.min.clone().divide(new Victor(2,2)).add(albedoTile.childIndex.clone().multiply(new Victor(gMap.tileSize/2, gMap.tileSize/2)));
+			albedoTileImageRect = new Rect(newImageRectOffset, newImageRectOffset.clone().add(newImageRectSize));
 
-			tile = tile.parent;			
+			albedoTile = albedoTile.parent;			
 		}
 
-		tiles.push({ screenTile: desiredTilesOnScreen[i], sourceTile: tile, sourceTileRect: tileImageRect });
+		// Find a parent tile image that is loaded
+		while (elevationTile.lod < gMap.numLods-1 && elevationTile.elevationImage.loadingState != ETileLoadingState.loaded)
+		{		
+			// Recalculate our image rect
+			var newImageRectSize = elevationTileImageRect.size.clone().divide(new Victor(2,2));
+			var newImageRectOffset = elevationTileImageRect.min.clone().divide(new Victor(2,2)).add(elevationTile.childIndex.clone().multiply(new Victor(gMap.tileSize/2, gMap.tileSize/2)));
+			elevationTileImageRect = new Rect(newImageRectOffset, newImageRectOffset.clone().add(newImageRectSize));
+
+			elevationTile = elevationTile.parent;			
+		}
+
+		tiles.push({ 
+			screenTile: desiredTilesOnScreen[i], 
+			sourceAlbedoTile: albedoTile, 
+			sourceAlbedoTileRect: albedoTileImageRect,
+			sourceElevationTile: elevationTile,
+			sourceElevationTileRect: elevationTileImageRect
+		 });
 	}
 
 	return tiles;
@@ -599,7 +631,7 @@ function draw()
 	gView.applyViewLimits();	
 
 
-	background(255, 255, 0);
+	background(255, 255, 255);
 	noStroke();
 
 	visitTileChildren(gRootTile, tile => {tile.isVisible = false;});
@@ -625,13 +657,20 @@ function draw()
 		// Mark this tile as being visible, uncluding all its parents
 		visitTileParents(visibleTile.screenTile, tile => {tile.isVisible = true;});
 
-		if (visibleTile.sourceTile.albedoImage.loadingState != ETileLoadingState.loaded)
+		if (visibleTile.sourceAlbedoTile.albedoImage.loadingState != ETileLoadingState.loaded ||
+			visibleTile.sourceElevationTile.elevationImage.loadingState != ETileLoadingState.loaded)
 			continue;
 
 		gTileShader.setUniform('cellIndex', [visibleTile.screenTile.cellIndex.x, visibleTile.screenTile.cellIndex.y]);
-		gTileShader.setUniform('texAlbedo', visibleTile.sourceTile.albedoImage.image);
-		gTileShader.setUniform('uSourceTextureTopLeft', [visibleTile.sourceTileRect.min.x / gMap.tileSize, visibleTile.sourceTileRect.min.y / gMap.tileSize]);
-		gTileShader.setUniform('uSourceTextureSize', [visibleTile.sourceTileRect.size.x / gMap.tileSize, visibleTile.sourceTileRect.size.y / gMap.tileSize]);
+
+		gTileShader.setUniform('uAlbedoTexture', visibleTile.sourceAlbedoTile.albedoImage.image);
+		gTileShader.setUniform('uAlbedoTextureTopLeft', [visibleTile.sourceAlbedoTileRect.min.x / gMap.tileSize, visibleTile.sourceAlbedoTileRect.min.y / gMap.tileSize]);
+		gTileShader.setUniform('uAlbedoTextureSize', [visibleTile.sourceAlbedoTileRect.size.x / gMap.tileSize, visibleTile.sourceAlbedoTileRect.size.y / gMap.tileSize]);
+
+		gTileShader.setUniform('uElevationTexture', visibleTile.sourceElevationTile.elevationImage.image);
+		gTileShader.setUniform('uElevationTextureTopLeft', [visibleTile.sourceElevationTileRect.min.x / gMap.tileSize, visibleTile.sourceElevationTileRect.min.y / gMap.tileSize]);
+		gTileShader.setUniform('uElevationTextureSize', [visibleTile.sourceElevationTileRect.size.x / gMap.tileSize, visibleTile.sourceElevationTileRect.size.y / gMap.tileSize]);
+
 
 		// Draw our tile
 		push();

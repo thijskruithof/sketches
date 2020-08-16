@@ -97,7 +97,7 @@ class View
 
 		// World dimensions
 		this.worldCenter = new Victor(0, 0);	//< Which position (in world coords) is shown in the center of the screen
-		this.worldScale = 1.0; 					//< Size in pixels on screen of 1 world unit.
+		this.worldScale = 1.0; 					//< Size in world units of 1 pixel on screen
 	}
 
 	clone()
@@ -255,6 +255,7 @@ var gZoomInitialMouseView;
 
 // Rendering
 var gTileShader;
+const gFOVy = (Math.PI/180.0)*60.0;
 
 // Streaming state
 var gNumTilesBeingLoaded = 0;
@@ -429,7 +430,7 @@ function preload()
 
 function setup() 
 {
-	var cnv = createCanvas(window.innerWidth, window.innerHeight);
+	var cnv = createCanvas(window.innerWidth, window.innerHeight, WEBGL);
 	cnv.position(0, 0);	
 	cnv.style('position', 'absolute');
 
@@ -464,8 +465,6 @@ function setup()
 	var folderStreaming = gTweakPane.addFolder({ title: 'Streaming' });
 	folderStreaming.addInput(gDebugSettings, 'loadOneByOne', {label: "Load one by one"});
 	folderStreaming.addInput(gDebugSettings, 'showTileMiniMap', {label: "Show mini map"});
-
-
 }
 
 
@@ -557,15 +556,25 @@ function draw()
 
 	gView.applyViewLimits();	
 
-	background(255, 255, 255);
 
-	strokeWeight(1);	
-	stroke(0,0,0);
+	background(255, 255, 0);
+	noStroke();
 
 	visitTileChildren(gRootTile, tile => {tile.isVisible = false;});
 
 	var desiredLod = calcDesiredLod();
 	var visibleTiles = getVisibleTiles(desiredLod);
+
+	shader(gTileShader);
+
+	perspective(gFOVy, gRenderWidth/gRenderHeight, 0.01, 100.0);
+
+	var cameraZ = (0.5*gView.screenRect.size.y*gView.worldScale) / Math.tan(0.5*gFOVy);
+
+	camera(
+		gView.worldCenter.x, gView.worldCenter.y, cameraZ,
+		gView.worldCenter.x, gView.worldCenter.y, 0,
+		0,1,0);
 
 	for (var i=0; i<visibleTiles.length; ++i)
 	{	
@@ -577,14 +586,19 @@ function draw()
 		if (visibleTile.sourceTile.loadingState != ETileLoadingState.loaded)
 			continue;
 
-		var screenRect = gView.worldToScreenRect(visibleTile.screenTile.worldRect);
-		var sourceRect = visibleTile.sourceTileRect;
+		gTileShader.setUniform('cellIndex', [visibleTile.screenTile.cellIndex.x, visibleTile.screenTile.cellIndex.y]);
+		gTileShader.setUniform('texAlbedo', visibleTile.sourceTile.image);
+		gTileShader.setUniform('uSourceTextureTopLeft', [visibleTile.sourceTileRect.min.x / gMap.tileSize, visibleTile.sourceTileRect.min.y / gMap.tileSize]);
+		gTileShader.setUniform('uSourceTextureSize', [visibleTile.sourceTileRect.size.x / gMap.tileSize, visibleTile.sourceTileRect.size.y / gMap.tileSize]);
 
-		image(visibleTile.sourceTile.image, 
-			screenRect.min.x, screenRect.min.y, screenRect.max.x-screenRect.min.x, screenRect.max.y-screenRect.min.y,
-			sourceRect.min.x, sourceRect.min.y, sourceRect.max.x-sourceRect.min.x, sourceRect.max.y-sourceRect.min.y
-		);
+		// Draw our tile
+		push();
+		translate(visibleTile.screenTile.worldRect.center.x, visibleTile.screenTile.worldRect.center.y);
+		plane(visibleTile.screenTile.worldRect.size.x, visibleTile.screenTile.worldRect.size.y);
+		pop();
 	}
+
+	resetShader();
 
 	updateTileLoading();	
 	updateTileUnloading();
@@ -615,8 +629,8 @@ var drawUImouseWasPressed = false;
 function drawUI()
 {
 	// Draw mini map
-	if (gDebugSettings.showTileMiniMap)
-		drawTileMiniMap();
+	// if (gDebugSettings.showTileMiniMap)
+	// 	drawTileMiniMap();
 
 	// Draw toggle button
 	var buttonPos = new Victor(gRenderWidth - 30, 86);

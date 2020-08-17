@@ -304,6 +304,7 @@ var gZoomInitialMouseWorldPos;
 var gZoomInitialMouseView;
 
 // Rendering
+var gTilesOffscreenGraphics;
 var gTileShader;
 const gFOVy = (Math.PI/180.0)*60.0;
 
@@ -489,6 +490,8 @@ function setup()
 	cnv.position(0, 0);	
 	cnv.style('position', 'absolute');
 
+	gTilesOffscreenGraphics = createGraphics(window.innerWidth, window.innerHeight, WEBGL);
+
 	// Construct our view
 	gView = new View(new Rect(new Victor(0, 0), new Victor(window.innerWidth, window.innerHeight)));
 
@@ -595,6 +598,12 @@ function draw()
 {
 	preDraw();
 
+	if (gRenderDimensionsChanged)
+	{
+		gTilesOffscreenGraphics.remove();
+		gTilesOffscreenGraphics = createGraphics(gRenderWidth, gRenderHeight, WEBGL);
+	}
+
 	// Adjust our view's screenspace to our canvas (in case it resized)
 	gView.screenRect = new Rect(new Victor(0,0), new Victor(gRenderWidth, gRenderHeight));
 
@@ -631,25 +640,26 @@ function draw()
 	gView.applyViewLimits();	
 
 
-	background(255, 255, 255);
-	noStroke();
 
 	visitTileChildren(gRootTile, tile => {tile.isVisible = false;});
 
 	var desiredLod = calcDesiredLod();
 	var visibleTiles = getVisibleTiles(desiredLod);
 
-	shader(gTileShader);
-
-	perspective(gFOVy, gRenderWidth/gRenderHeight, 0.01, 100.0);
+	// Prepare rendering to offscreen buffer
+	gTilesOffscreenGraphics.clear();
+	gTilesOffscreenGraphics.noStroke();
+	gTilesOffscreenGraphics.shader(gTileShader);
+	gTilesOffscreenGraphics.perspective(gFOVy, gRenderWidth/gRenderHeight, 0.01, 100.0);
 
 	var cameraZ = (0.5*gView.screenRect.size.y*gView.worldScale) / Math.tan(0.5*gFOVy);
 
-	camera(
+	gTilesOffscreenGraphics.camera(
 		gView.worldCenter.x, gView.worldCenter.y, cameraZ,
 		gView.worldCenter.x, gView.worldCenter.y, 0,
 		0,1,0);
 
+	// Render all tiles
 	for (var i=0; i<visibleTiles.length; ++i)
 	{	
 		var visibleTile = visibleTiles[i];
@@ -671,15 +681,19 @@ function draw()
 		gTileShader.setUniform('uElevationTextureTopLeft', [visibleTile.sourceElevationTileRect.min.x / gMap.tileSize, visibleTile.sourceElevationTileRect.min.y / gMap.tileSize]);
 		gTileShader.setUniform('uElevationTextureSize', [visibleTile.sourceElevationTileRect.size.x / gMap.tileSize, visibleTile.sourceElevationTileRect.size.y / gMap.tileSize]);
 
-
 		// Draw our tile
-		push();
-		translate(visibleTile.screenTile.worldRect.center.x, visibleTile.screenTile.worldRect.center.y);
-		plane(visibleTile.screenTile.worldRect.size.x, visibleTile.screenTile.worldRect.size.y);
-		pop();
+		gTilesOffscreenGraphics.push();
+		gTilesOffscreenGraphics.translate(visibleTile.screenTile.worldRect.center.x, visibleTile.screenTile.worldRect.center.y);
+		gTilesOffscreenGraphics.plane(visibleTile.screenTile.worldRect.size.x, visibleTile.screenTile.worldRect.size.y);
+		gTilesOffscreenGraphics.pop();
 	}
 
-	resetShader();
+	gTilesOffscreenGraphics.resetShader();
+
+	clear();
+	noStroke();
+	imageMode(CORNER);
+	image(gTilesOffscreenGraphics, -gRenderWidth/2, -gRenderHeight/2);
 
 	updateTileLoading();	
 	updateTileUnloading();

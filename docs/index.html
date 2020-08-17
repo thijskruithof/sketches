@@ -38,6 +38,7 @@
     var gNumFramesRecorded = 0;
     var gRenderTime = 0;
     var gRenderDeltaTime = 0; // in seconds!
+    var gRenderDimensionsChanged = false;
 
     // Locals
     var currentSketchIndex = -1;
@@ -176,14 +177,18 @@
 
     function preDraw()
     {
+      gRenderDimensionsChanged = false;
       gRenderDeltaTime = !gIsRecording ? (deltaTime/1000.0) : (1.0/cRecordingFps);
 
       gRenderWidth = !gIsRecording ? window.innerWidth : cRecordingRenderSize;
       gRenderHeight = !gIsRecording ? window.innerHeight : cRecordingRenderSize;
 
       // Resize canvas if needed.
-    	if (canvas.width/pixelDensity() != gRenderWidth || canvas.height/pixelDensity() != gRenderHeight)
-	 	    resizeCanvas(gRenderWidth, gRenderHeight, false);
+      if (canvas.width/pixelDensity() != gRenderWidth || canvas.height/pixelDensity() != gRenderHeight)
+      {
+         resizeCanvas(gRenderWidth, gRenderHeight, false);
+         gRenderDimensionsChanged = true;
+      }
     }
 
     function postDraw()

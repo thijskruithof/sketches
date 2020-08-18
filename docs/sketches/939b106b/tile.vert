@@ -11,14 +11,11 @@ uniform vec2 uElevationTextureSize;
 
 varying vec2 vAlbedoUV;
 varying vec2 vElevationUV;
-varying vec3 vPositionView;
 
 void main() 
 {
     vec4 positionVec4 = vec4(aPosition, 1.0);
     gl_Position = uProjectionMatrix * uModelViewMatrix * positionVec4;
-
-    vPositionView = (uModelViewMatrix * positionVec4).xyz;
 
     vAlbedoUV = uAlbedoTextureTopLeft + aTexCoord * uAlbedoTextureSize;
     vElevationUV = uElevationTextureTopLeft + aTexCoord * uElevationTextureSize;

@@ -306,6 +306,7 @@ var gZoomInitialMouseView;
 // Rendering
 var gTilesOffscreenGraphics;
 var gTileShader;
+var gMapShader;
 const gFOVy = (Math.PI/180.0)*60.0;
 
 // Streaming state
@@ -481,6 +482,7 @@ function preload()
 	gOptionsButtonOff = loadImage("sketches/939b106b/options_off.png");
 
 	gTileShader = loadShader('sketches/939b106b/tile.vert', 'sketches/939b106b/tile.frag');
+	gMapShader = loadShader('sketches/939b106b/map.vert', 'sketches/939b106b/map.frag');
 }
 
 
@@ -701,11 +703,12 @@ function draw()
 		gTilesOffscreenGraphics.resetShader();
 
 		noStroke();
-		imageMode(CORNER);
+		shader(gMapShader);
+				
+		gMapShader.setUniform('uScreenOffset', [2*viewScreenOffset.x/gRenderWidth, 2*viewScreenOffset.y/gRenderHeight]);
+		gMapShader.setUniform('uTilesTexture', gTilesOffscreenGraphics);
 
-		image(gTilesOffscreenGraphics, 
-			gRenderWidth*(qx-1)/4, gRenderHeight*(qy-1)/4, gRenderWidth/2, gRenderHeight/2,
-			gRenderWidth/4, gRenderHeight/4, gRenderWidth/2, gRenderHeight/2);
+		plane(gRenderWidth / 2, gRenderHeight / 2);
 	}
 
 	updateTileLoading();	

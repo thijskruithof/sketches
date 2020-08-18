@@ -4,7 +4,7 @@ varying vec2 vUV;
 varying vec3 vPositionView;
 
 uniform sampler2D uTilesTexture;
-
+uniform float uReliefDepth;
 
 float find_intersection(vec2 dp, vec2 ds) 
 {
@@ -43,13 +43,11 @@ void main()
     vec3 etangent = vec3(1.0, 0.0, 0.0);
     vec3 ebitangent = vec3(0.0, 1.0, 0.0);
 
-    float depth = 0.3;
-
 	// e: eye space
 	// t: tangent space
 	vec3 eview = normalize(vPositionView.xyz);
 	vec3 tview = normalize(vec3(dot(eview, etangent), dot(eview, ebitangent), dot(eview, -N)));
-	vec2 ds = tview.xy * depth / tview.z;
+	vec2 ds = tview.xy * uReliefDepth / tview.z;
 	float dist = find_intersection(vUV, ds);
 	vec2 uv = vUV + dist * ds;
 

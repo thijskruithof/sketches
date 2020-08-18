@@ -329,7 +329,8 @@ var gDebugInfo = {
 var gDebugSettings = {
 	mapIndex: 1,
 	loadOneByOne: false,
-	showTileMiniMap: false
+	showTileMiniMap: false,
+	reliefDepth: 0.3
 };
 
 
@@ -520,11 +521,14 @@ function setup()
 		mapOptions[gMaps[i].title] = i;
 	folderMap.addInput(gDebugSettings, 'mapIndex', { options: mapOptions, label: "Map"	}).on('change', (value) => {
 		selectMap(gMaps[value]);
-	});
+	});	
 
 	var folderStreaming = gTweakPane.addFolder({ title: 'Streaming' });
 	folderStreaming.addInput(gDebugSettings, 'loadOneByOne', {label: "Load one by one"});
 	folderStreaming.addInput(gDebugSettings, 'showTileMiniMap', {label: "Show mini map"});
+
+	var folderRender = gTweakPane.addFolder({ title: 'Rendering' });
+	folderRender.addInput(gDebugSettings, 'reliefDepth', {label: "Relief depth", min:0, max:0.6});	
 }
 
 
@@ -709,6 +713,7 @@ function draw()
 		gMapShader.setUniform('uScreenOffset', [2*viewScreenOffset.x/gRenderWidth, 2*viewScreenOffset.y/gRenderHeight]);
 		gMapShader.setUniform('uTilesTexture', gTilesOffscreenGraphics);
 		gMapShader.setUniform('uPlaneZ', -cameraZ);
+		gMapShader.setUniform('uReliefDepth', gDebugSettings.reliefDepth);		
 
 		plane(gRenderWidth / 2, gRenderHeight / 2);
 	}

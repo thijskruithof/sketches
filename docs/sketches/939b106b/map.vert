@@ -9,7 +9,7 @@ varying vec3 vPositionView;
 
 void main() 
 {
-    gl_Position = vec4(aPosition.x+uScreenOffset.x, aPosition.y-uScreenOffset.y, 0.0, 1.0);
+    gl_Position = vec4(aPosition.x+uScreenOffset.x, aPosition.y-uScreenOffset.y, 0.9, 1.0);
 
     vUV.x = aTexCoord.x * 0.5 + 0.25;
     vUV.y = (1.0-aTexCoord.y) * 0.5 + 0.25;

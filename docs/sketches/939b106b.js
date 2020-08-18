@@ -755,11 +755,12 @@ function drawUI()
 
 	var worldButtonPos = gView.screenToWorldPos(buttonPos);
 	var worldButtonSize = gView.screenToWorldScale(buttonSize);
+	resetShader();
 	push();
-	translate(worldButtonPos.x, worldButtonPos.y);
+	translate(0.5*buttonPos.x - buttonSize*0.5,0.5*(-gRenderHeight+buttonPos.y)+buttonSize*1.5,0.0);
 	rotateZ(gOptionsButtonAngle);
 	texture(on ? gOptionsButtonOn : gOptionsButtonOff);
-	plane(worldButtonSize,worldButtonSize);
+	plane(buttonSize, buttonSize);
 	pop();
 
 	if (!drawUImouseWasPressed && mouseIsPressed && on)

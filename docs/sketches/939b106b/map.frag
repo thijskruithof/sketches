@@ -43,7 +43,7 @@ void main()
     vec3 etangent = vec3(1.0, 0.0, 0.0);
     vec3 ebitangent = vec3(0.0, 1.0, 0.0);
 
-    float depth = 0.01;
+    float depth = 0.3;
 
 	// e: eye space
 	// t: tangent space

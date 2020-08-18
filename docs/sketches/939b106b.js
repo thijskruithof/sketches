@@ -645,6 +645,7 @@ function draw()
 
 	var desiredLod = calcDesiredLod();
 
+
 	for (var qy=-1; qy<=1; qy+=2)
 	for (var qx=-1; qx<=1; qx+=2)
 	{
@@ -707,6 +708,7 @@ function draw()
 				
 		gMapShader.setUniform('uScreenOffset', [2*viewScreenOffset.x/gRenderWidth, 2*viewScreenOffset.y/gRenderHeight]);
 		gMapShader.setUniform('uTilesTexture', gTilesOffscreenGraphics);
+		gMapShader.setUniform('uPlaneZ', -cameraZ);
 
 		plane(gRenderWidth / 2, gRenderHeight / 2);
 	}

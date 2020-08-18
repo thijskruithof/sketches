@@ -542,12 +542,10 @@ function calcDesiredLod()
 }
 
 
-function getVisibleTiles(desiredLod)
+function getVisibleTiles(desiredLod, view)
 {
-	var worldScreenRect = gView.worldRect;
-
 	var desiredTileGrid = gTileGrids[desiredLod];
-	var desiredTilesOnScreen = desiredTileGrid.getTilesInWorldRect(worldScreenRect);
+	var desiredTilesOnScreen = desiredTileGrid.getTilesInWorldRect(view.worldRect);
 
 	var tiles = [];
 	for (var i=0; i<desiredTilesOnScreen.length; ++i)
@@ -600,8 +598,8 @@ function draw()
 
 	if (gRenderDimensionsChanged)
 	{
-		gTilesOffscreenGraphics.remove();
-		gTilesOffscreenGraphics = createGraphics(gRenderWidth, gRenderHeight, WEBGL);
+		gTilesOffscreenGraphics.width = gRenderWidth;
+		gTilesOffscreenGraphics.height = gRenderHeight;
 	}
 
 	// Adjust our view's screenspace to our canvas (in case it resized)
@@ -639,61 +637,76 @@ function draw()
 
 	gView.applyViewLimits();	
 
-
+	clear();
 
 	visitTileChildren(gRootTile, tile => {tile.isVisible = false;});
 
 	var desiredLod = calcDesiredLod();
-	var visibleTiles = getVisibleTiles(desiredLod);
 
-	// Prepare rendering to offscreen buffer
-	gTilesOffscreenGraphics.clear();
-	gTilesOffscreenGraphics.noStroke();
-	gTilesOffscreenGraphics.shader(gTileShader);
-	gTilesOffscreenGraphics.perspective(gFOVy, gRenderWidth/gRenderHeight, 0.01, 100.0);
+	for (var qy=-1; qy<=1; qy+=2)
+	for (var qx=-1; qx<=1; qx+=2)
+	{
+		var viewScreenOffset = new Victor(qx*gRenderWidth/4, qy*gRenderHeight/4);
+		var quadrantView = gView.clone();
 
-	var cameraZ = (0.5*gView.screenRect.size.y*gView.worldScale) / Math.tan(0.5*gFOVy);
+		// Apply screenspace offset for quadrant
+		quadrantView.screenRect.min.add(viewScreenOffset);
+		quadrantView.screenRect.max.add(viewScreenOffset);
+		quadrantView.worldCenter.add(new Victor(gView.screenToWorldScale(viewScreenOffset.x), gView.screenToWorldScale(viewScreenOffset.y)));
 
-	gTilesOffscreenGraphics.camera(
-		gView.worldCenter.x, gView.worldCenter.y, cameraZ,
-		gView.worldCenter.x, gView.worldCenter.y, 0,
-		0,1,0);
+		var visibleTiles = getVisibleTiles(desiredLod, quadrantView);
 
-	// Render all tiles
-	for (var i=0; i<visibleTiles.length; ++i)
-	{	
-		var visibleTile = visibleTiles[i];
+		// Prepare rendering to offscreen buffer
+		gTilesOffscreenGraphics.clear();
+		gTilesOffscreenGraphics.noStroke();
+		gTilesOffscreenGraphics.shader(gTileShader);
+		gTilesOffscreenGraphics.perspective(gFOVy, gRenderWidth/gRenderHeight, 0.01, 100.0);
 
-		// Mark this tile as being visible, uncluding all its parents
-		visitTileParents(visibleTile.screenTile, tile => {tile.isVisible = true;});
+		var cameraZ = (0.5*quadrantView.screenRect.size.y*quadrantView.worldScale) / Math.tan(0.5*gFOVy);
 
-		if (visibleTile.sourceAlbedoTile.albedoImage.loadingState != ETileLoadingState.loaded ||
-			visibleTile.sourceElevationTile.elevationImage.loadingState != ETileLoadingState.loaded)
-			continue;
+		gTilesOffscreenGraphics.camera(
+			quadrantView.worldCenter.x, quadrantView.worldCenter.y, cameraZ,
+			quadrantView.worldCenter.x, quadrantView.worldCenter.y, 0,
+			0,1,0);
 
-		gTileShader.setUniform('cellIndex', [visibleTile.screenTile.cellIndex.x, visibleTile.screenTile.cellIndex.y]);
+		// Render all tiles
+		for (var i=0; i<visibleTiles.length; ++i)
+		{	
+			var visibleTile = visibleTiles[i];
 
-		gTileShader.setUniform('uAlbedoTexture', visibleTile.sourceAlbedoTile.albedoImage.image);
-		gTileShader.setUniform('uAlbedoTextureTopLeft', [visibleTile.sourceAlbedoTileRect.min.x / gMap.tileSize, visibleTile.sourceAlbedoTileRect.min.y / gMap.tileSize]);
-		gTileShader.setUniform('uAlbedoTextureSize', [visibleTile.sourceAlbedoTileRect.size.x / gMap.tileSize, visibleTile.sourceAlbedoTileRect.size.y / gMap.tileSize]);
+			// Mark this tile as being visible, uncluding all its parents
+			visitTileParents(visibleTile.screenTile, tile => {tile.isVisible = true;});
 
-		gTileShader.setUniform('uElevationTexture', visibleTile.sourceElevationTile.elevationImage.image);
-		gTileShader.setUniform('uElevationTextureTopLeft', [visibleTile.sourceElevationTileRect.min.x / gMap.tileSize, visibleTile.sourceElevationTileRect.min.y / gMap.tileSize]);
-		gTileShader.setUniform('uElevationTextureSize', [visibleTile.sourceElevationTileRect.size.x / gMap.tileSize, visibleTile.sourceElevationTileRect.size.y / gMap.tileSize]);
+			if (visibleTile.sourceAlbedoTile.albedoImage.loadingState != ETileLoadingState.loaded ||
+				visibleTile.sourceElevationTile.elevationImage.loadingState != ETileLoadingState.loaded)
+				continue;
 
-		// Draw our tile
-		gTilesOffscreenGraphics.push();
-		gTilesOffscreenGraphics.translate(visibleTile.screenTile.worldRect.center.x, visibleTile.screenTile.worldRect.center.y);
-		gTilesOffscreenGraphics.plane(visibleTile.screenTile.worldRect.size.x, visibleTile.screenTile.worldRect.size.y);
-		gTilesOffscreenGraphics.pop();
+			gTileShader.setUniform('cellIndex', [visibleTile.screenTile.cellIndex.x, visibleTile.screenTile.cellIndex.y]);
+
+			gTileShader.setUniform('uAlbedoTexture', visibleTile.sourceAlbedoTile.albedoImage.image);
+			gTileShader.setUniform('uAlbedoTextureTopLeft', [visibleTile.sourceAlbedoTileRect.min.x / gMap.tileSize, visibleTile.sourceAlbedoTileRect.min.y / gMap.tileSize]);
+			gTileShader.setUniform('uAlbedoTextureSize', [visibleTile.sourceAlbedoTileRect.size.x / gMap.tileSize, visibleTile.sourceAlbedoTileRect.size.y / gMap.tileSize]);
+
+			gTileShader.setUniform('uElevationTexture', visibleTile.sourceElevationTile.elevationImage.image);
+			gTileShader.setUniform('uElevationTextureTopLeft', [visibleTile.sourceElevationTileRect.min.x / gMap.tileSize, visibleTile.sourceElevationTileRect.min.y / gMap.tileSize]);
+			gTileShader.setUniform('uElevationTextureSize', [visibleTile.sourceElevationTileRect.size.x / gMap.tileSize, visibleTile.sourceElevationTileRect.size.y / gMap.tileSize]);
+
+			// Draw our tile
+			gTilesOffscreenGraphics.push();
+			gTilesOffscreenGraphics.translate(visibleTile.screenTile.worldRect.center.x, visibleTile.screenTile.worldRect.center.y);
+			gTilesOffscreenGraphics.plane(visibleTile.screenTile.worldRect.size.x, visibleTile.screenTile.worldRect.size.y);
+			gTilesOffscreenGraphics.pop();
+		}
+
+		gTilesOffscreenGraphics.resetShader();
+
+		noStroke();
+		imageMode(CORNER);
+
+		image(gTilesOffscreenGraphics, 
+			gRenderWidth*(qx-1)/4, gRenderHeight*(qy-1)/4, gRenderWidth/2, gRenderHeight/2,
+			gRenderWidth/4, gRenderHeight/4, gRenderWidth/2, gRenderHeight/2);
 	}
-
-	gTilesOffscreenGraphics.resetShader();
-
-	clear();
-	noStroke();
-	imageMode(CORNER);
-	image(gTilesOffscreenGraphics, -gRenderWidth/2, -gRenderHeight/2);
 
 	updateTileLoading();	
 	updateTileUnloading();

@@ -330,7 +330,8 @@ var gDebugSettings = {
 	mapIndex: 1,
 	loadOneByOne: false,
 	showTileMiniMap: false,
-	reliefDepth: 0.3
+	reliefDepth: 0.3,
+	cameraPitchAngle: 0.0
 };
 
 
@@ -529,6 +530,8 @@ function setup()
 
 	var folderRender = gTweakPane.addFolder({ title: 'Rendering' });
 	folderRender.addInput(gDebugSettings, 'reliefDepth', {label: "Relief depth", min:0, max:0.6});	
+	folderRender.addInput(gDebugSettings, 'cameraPitchAngle', {label: "Camera angle", min:0.0, max:5.0});	
+	
 }
 
 
@@ -688,8 +691,6 @@ function draw()
 				visibleTile.sourceElevationTile.elevationImage.loadingState != ETileLoadingState.loaded)
 				continue;
 
-			gTileShader.setUniform('cellIndex', [visibleTile.screenTile.cellIndex.x, visibleTile.screenTile.cellIndex.y]);
-
 			gTileShader.setUniform('uAlbedoTexture', visibleTile.sourceAlbedoTile.albedoImage.image);
 			gTileShader.setUniform('uAlbedoTextureTopLeft', [visibleTile.sourceAlbedoTileRect.min.x / gMap.tileSize, visibleTile.sourceAlbedoTileRect.min.y / gMap.tileSize]);
 			gTileShader.setUniform('uAlbedoTextureSize', [visibleTile.sourceAlbedoTileRect.size.x / gMap.tileSize, visibleTile.sourceAlbedoTileRect.size.y / gMap.tileSize]);
@@ -715,7 +716,11 @@ function draw()
 		gMapShader.setUniform('uPlaneZ', -cameraZ);
 		gMapShader.setUniform('uReliefDepth', gDebugSettings.reliefDepth);		
 
+		push();
+		rotateX(gDebugSettings.cameraPitchAngle);		
+		translate(viewScreenOffset.x, viewScreenOffset.y);
 		plane(gRenderWidth / 2, gRenderHeight / 2);
+		pop();
 	}
 
 	updateTileLoading();	

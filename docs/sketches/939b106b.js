@@ -330,8 +330,8 @@ var gDebugSettings = {
 	mapIndex: 1,
 	loadOneByOne: false,
 	showTileMiniMap: false,
-	reliefDepth: 0.3,
-	cameraPitchAngle: 0.0
+	reliefDepth: 0.05,
+	cameraPitchAngle: 0.38
 };
 
 
@@ -653,8 +653,9 @@ function draw()
 	var desiredLod = calcDesiredLod();
 
 
-	for (var qy=-1; qy<=1; qy+=2)
-	for (var qx=-1; qx<=1; qx+=2)
+
+	for (var qy=-3; qy<=1; qy+=2)
+	for (var qx=-3; qx<=3; qx+=2)
 	{
 		var viewScreenOffset = new Victor(qx*gRenderWidth/4, qy*gRenderHeight/4);
 		var quadrantView = gView.clone();
@@ -679,7 +680,7 @@ function draw()
 			quadrantView.worldCenter.x, quadrantView.worldCenter.y, 0,
 			0,1,0);
 
-		// Render all tiles
+		// Render all tiles within the quadrant
 		for (var i=0; i<visibleTiles.length; ++i)
 		{	
 			var visibleTile = visibleTiles[i];
@@ -708,8 +709,27 @@ function draw()
 
 		gTilesOffscreenGraphics.resetShader();
 
+		// Render a quadrant to the screen
 		noStroke();
 		shader(gMapShader);
+		perspective(gFOVy, gRenderWidth/gRenderHeight, 0.01, 100.0);
+
+		cameraZ = (0.5*gView.screenRect.size.y*gView.worldScale) / Math.tan(0.5*gFOVy);
+
+		// Rotate camera in 2D (ZY space) around bottom of world
+		var cameraPos = new Victor(cameraZ, gView.worldCenter.y);
+		var cameraFwd = new Victor(-1.0, 0.0);
+		var planeBottomCenterPos = new Victor(0.0, gView.worldCenter.y + gView.worldRect.size.y/2.0);
+		var cameraOffset = cameraPos.clone().subtract(planeBottomCenterPos).rotate(gDebugSettings.cameraPitchAngle);
+		cameraFwd.rotate(gDebugSettings.cameraPitchAngle);
+
+		cameraPos = planeBottomCenterPos.clone().add(cameraOffset);
+		var targetPos = cameraPos.clone().add(cameraFwd);
+
+		camera(
+			gView.worldCenter.x, cameraPos.y, cameraPos.x,
+			gView.worldCenter.x, targetPos.y, targetPos.x,
+			0,-cameraFwd.x,cameraFwd.y);
 				
 		gMapShader.setUniform('uScreenOffset', [2*viewScreenOffset.x/gRenderWidth, 2*viewScreenOffset.y/gRenderHeight]);
 		gMapShader.setUniform('uTilesTexture', gTilesOffscreenGraphics);
@@ -717,9 +737,9 @@ function draw()
 		gMapShader.setUniform('uReliefDepth', gDebugSettings.reliefDepth);		
 
 		push();
-		rotateX(gDebugSettings.cameraPitchAngle);		
-		translate(viewScreenOffset.x, viewScreenOffset.y);
-		plane(gRenderWidth / 2, gRenderHeight / 2);
+		//rotateX(gDebugSettings.cameraPitchAngle);		
+		translate(gView.worldCenter.x + qx*gView.worldRect.size.x/4.0, gView.worldCenter.y + qy*gView.worldRect.size.y/4.0);
+		plane(gView.worldRect.size.x / 2, gView.worldRect.size.y / 2);
 		pop();
 	}
 

@@ -733,26 +733,27 @@ function draw()
 			visibleTile.sourceElevationTile.elevationImage.loadingState != ETileLoadingState.loaded)
 			continue;
 
+		var right = visibleTile.screenTile.worldRect.min.x >= gView.worldCenter.x;
+		var top = visibleTile.screenTile.worldRect.min.y <= gView.worldCenter.y;
+
+		var neighbour01 = right ? visibleTile.neighbour12 : visibleTile.neighbour10;
+		var neighbour10 = top ? visibleTile.neighbour01 : visibleTile.neighbour21;
+		var neighbour11 = right ? (top ? visibleTile.neighbour02 : visibleTile.neighbour22) : (top ? visibleTile.neighbour00 : visibleTile.neighbour20);
+
 		gTileShader.setUniform('uReliefDepth', gDebugSettings.reliefDepth);
-		// gTileShader.setUniform('uAlbedoTexture', visibleTile.sourceAlbedoTile.albedoImage.image);
 
 		gTileShader.setUniform('uAlbedoTexture00', visibleTile.sourceAlbedoTile.albedoImage.image);
-		gTileShader.setUniform('uAlbedoTexture01', visibleTile.neighbour12 != null && visibleTile.neighbour12.screenTile.valid && visibleTile.neighbour12.sourceAlbedoTile.albedoImage.loadingState == ETileLoadingState.loaded ? visibleTile.neighbour12.sourceAlbedoTile.albedoImage.image : visibleTile.sourceAlbedoTile.albedoImage.image);
-		gTileShader.setUniform('uAlbedoTexture10', visibleTile.neighbour01 != null && visibleTile.neighbour01.screenTile.valid && visibleTile.neighbour01.sourceAlbedoTile.albedoImage.loadingState == ETileLoadingState.loaded ? visibleTile.neighbour01.sourceAlbedoTile.albedoImage.image : visibleTile.sourceAlbedoTile.albedoImage.image);
-		gTileShader.setUniform('uAlbedoTexture11', visibleTile.neighbour02 != null && visibleTile.neighbour02.screenTile.valid && visibleTile.neighbour02.sourceAlbedoTile.albedoImage.loadingState == ETileLoadingState.loaded ? visibleTile.neighbour02.sourceAlbedoTile.albedoImage.image : visibleTile.sourceAlbedoTile.albedoImage.image);
-
-		
+		gTileShader.setUniform('uAlbedoTexture01', neighbour01 != null && neighbour01.screenTile.valid && neighbour01.sourceAlbedoTile.albedoImage.loadingState == ETileLoadingState.loaded ? neighbour01.sourceAlbedoTile.albedoImage.image : visibleTile.sourceAlbedoTile.albedoImage.image);
+		gTileShader.setUniform('uAlbedoTexture10', neighbour10 != null && neighbour10.screenTile.valid && neighbour10.sourceAlbedoTile.albedoImage.loadingState == ETileLoadingState.loaded ? neighbour10.sourceAlbedoTile.albedoImage.image : visibleTile.sourceAlbedoTile.albedoImage.image);
+		gTileShader.setUniform('uAlbedoTexture11', neighbour11 != null && neighbour11.screenTile.valid && neighbour11.sourceAlbedoTile.albedoImage.loadingState == ETileLoadingState.loaded ? neighbour11.sourceAlbedoTile.albedoImage.image : visibleTile.sourceAlbedoTile.albedoImage.image);
+		gTileShader.setUniform('uElevationTexture00', visibleTile.sourceElevationTile.elevationImage.image);
+		gTileShader.setUniform('uElevationTexture01', neighbour01 != null && neighbour01.screenTile.valid && neighbour01.sourceElevationTile.elevationImage.loadingState == ETileLoadingState.loaded ? neighbour01.sourceElevationTile.elevationImage.image : visibleTile.sourceElevationTile.elevationImage.image);
+		gTileShader.setUniform('uElevationTexture10', neighbour10 != null && neighbour10.screenTile.valid && neighbour10.sourceElevationTile.elevationImage.loadingState == ETileLoadingState.loaded ? neighbour10.sourceElevationTile.elevationImage.image : visibleTile.sourceElevationTile.elevationImage.image);
+		gTileShader.setUniform('uElevationTexture11', neighbour11 != null && neighbour11.screenTile.valid && neighbour11.sourceElevationTile.elevationImage.loadingState == ETileLoadingState.loaded ? neighbour11.sourceElevationTile.elevationImage.image : visibleTile.sourceElevationTile.elevationImage.image);
 
 
 		gTileShader.setUniform('uAlbedoTextureTopLeft', [visibleTile.sourceAlbedoTileRect.min.x / gMap.tileSize, visibleTile.sourceAlbedoTileRect.min.y / gMap.tileSize]);
 		gTileShader.setUniform('uAlbedoTextureSize', [visibleTile.sourceAlbedoTileRect.size.x / gMap.tileSize, visibleTile.sourceAlbedoTileRect.size.y / gMap.tileSize]);
-
-		gTileShader.setUniform('uElevationTexture00', visibleTile.sourceElevationTile.elevationImage.image);
-		gTileShader.setUniform('uElevationTexture01', visibleTile.neighbour12 != null && visibleTile.neighbour12.screenTile.valid && visibleTile.neighbour12.sourceElevationTile.elevationImage.loadingState == ETileLoadingState.loaded ? visibleTile.neighbour12.sourceElevationTile.elevationImage.image : visibleTile.sourceElevationTile.elevationImage.image);
-		gTileShader.setUniform('uElevationTexture10', visibleTile.neighbour01 != null && visibleTile.neighbour01.screenTile.valid && visibleTile.neighbour01.sourceElevationTile.elevationImage.loadingState == ETileLoadingState.loaded ? visibleTile.neighbour01.sourceElevationTile.elevationImage.image : visibleTile.sourceElevationTile.elevationImage.image);
-		gTileShader.setUniform('uElevationTexture11', visibleTile.neighbour02 != null && visibleTile.neighbour02.screenTile.valid && visibleTile.neighbour02.sourceElevationTile.elevationImage.loadingState == ETileLoadingState.loaded ? visibleTile.neighbour02.sourceElevationTile.elevationImage.image : visibleTile.sourceElevationTile.elevationImage.image);
-
-		// gTileShader.setUniform('uElevationTexture', visibleTile.sourceElevationTile.elevationImage.image);
 		gTileShader.setUniform('uElevationTextureTopLeft', [visibleTile.sourceElevationTileRect.min.x / gMap.tileSize, visibleTile.sourceElevationTileRect.min.y / gMap.tileSize]);
 		gTileShader.setUniform('uElevationTextureSize', [visibleTile.sourceElevationTileRect.size.x / gMap.tileSize, visibleTile.sourceElevationTileRect.size.y / gMap.tileSize]);
 

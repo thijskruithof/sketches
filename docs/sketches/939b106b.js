@@ -269,14 +269,39 @@ class TileGrid
 		br.x = Math.min(this.numTilesPerAxis-1, Math.max(0, br.x));
 		br.y = Math.min(this.numTilesPerAxis-1, Math.max(0, br.y));		
 
+		var numCellsY = (br.y - tl.y)+1;
+		var numCellsX = (br.x - tl.x)+1;
+
+		// Gather all tiles
 		var result = [];
 		for (var y=tl.y; y<=br.y; ++y)
 		{
 			for (var x=tl.x; x<=br.x; ++x)
 			{
-				var tile = this.tiles[y*this.numTilesPerAxis+x];
-				if (tile.valid == true)
-					result.push(tile);
+				var t = this.tiles[y*this.numTilesPerAxis+x];
+				result.push({ tile: t, index: [y-tl.y,x-tl.x] });
+			}
+		}
+
+		// Construct neighbour cell indices
+		for (var i=0; i<result.length; ++i)
+		{
+			var index = result[i].index;
+			result[i].neighbours = [];
+
+			for (var y=-1; y<=1; ++y)
+			{
+				for (var x=-1; x<=1; ++x)
+				{
+					var neighbourindex = -1;
+					if (index[0]+y >= 0 && index[0]+y < numCellsY &&
+						index[1]+x >= 0 && index[1]+x < numCellsX)
+					{
+						neighbourindex = i + y*numCellsX + x;
+					}
+					
+					result[i].neighbours.push(neighbourindex);
+				}
 			}
 		}
 
@@ -330,7 +355,7 @@ var gDebugSettings = {
 	mapIndex: 1,
 	loadOneByOne: false,
 	showTileMiniMap: false,
-	reliefDepth: 0.05,
+	reliefDepth: 0.03,
 	cameraPitchAngle: 0.38
 };
 
@@ -529,7 +554,7 @@ function setup()
 	folderStreaming.addInput(gDebugSettings, 'showTileMiniMap', {label: "Show mini map"});
 
 	var folderRender = gTweakPane.addFolder({ title: 'Rendering' });
-	folderRender.addInput(gDebugSettings, 'reliefDepth', {label: "Relief depth", min:0, max:0.6});	
+	folderRender.addInput(gDebugSettings, 'reliefDepth', {label: "Relief depth", min:0, max:0.50});	
 	folderRender.addInput(gDebugSettings, 'cameraPitchAngle', {label: "Camera angle", min:0.0, max:5.0});	
 	
 }
@@ -559,41 +584,59 @@ function getVisibleTiles(desiredLod, view)
 	var tiles = [];
 	for (var i=0; i<desiredTilesOnScreen.length; ++i)
 	{
-		var albedoTile = desiredTilesOnScreen[i];
-		var elevationTile = desiredTilesOnScreen[i];
+		// if (!desiredTilesOnScreen[i].tile.valid)
+		// 	continue;
+
+		var albedoTile = desiredTilesOnScreen[i].tile;
+		var elevationTile = desiredTilesOnScreen[i].tile;
 
 		var albedoTileImageRect = new Rect(new Victor(0,0), new Victor(gMap.tileSize, gMap.tileSize));
 		var elevationTileImageRect = albedoTileImageRect.clone();
 
-		// Find a parent tile image that is loaded
-		while (albedoTile.lod < gMap.numLods-1 && albedoTile.albedoImage.loadingState != ETileLoadingState.loaded)
-		{		
-			// Recalculate our image rect
-			var newImageRectSize = albedoTileImageRect.size.clone().divide(new Victor(2,2));
-			var newImageRectOffset = albedoTileImageRect.min.clone().divide(new Victor(2,2)).add(albedoTile.childIndex.clone().multiply(new Victor(gMap.tileSize/2, gMap.tileSize/2)));
-			albedoTileImageRect = new Rect(newImageRectOffset, newImageRectOffset.clone().add(newImageRectSize));
+		// // Find a parent tile image that is loaded
+		// while (albedoTile.lod < gMap.numLods-1 && albedoTile.albedoImage.loadingState != ETileLoadingState.loaded)
+		// {		
+		// 	// Recalculate our image rect
+		// 	var newImageRectSize = albedoTileImageRect.size.clone().divide(new Victor(2,2));
+		// 	var newImageRectOffset = albedoTileImageRect.min.clone().divide(new Victor(2,2)).add(albedoTile.childIndex.clone().multiply(new Victor(gMap.tileSize/2, gMap.tileSize/2)));
+		// 	albedoTileImageRect = new Rect(newImageRectOffset, newImageRectOffset.clone().add(newImageRectSize));
 
-			albedoTile = albedoTile.parent;			
-		}
+		// 	albedoTile = albedoTile.parent;			
+		// }
 
-		// Find a parent tile image that is loaded
-		while (elevationTile.lod < gMap.numLods-1 && elevationTile.elevationImage.loadingState != ETileLoadingState.loaded)
-		{		
-			// Recalculate our image rect
-			var newImageRectSize = elevationTileImageRect.size.clone().divide(new Victor(2,2));
-			var newImageRectOffset = elevationTileImageRect.min.clone().divide(new Victor(2,2)).add(elevationTile.childIndex.clone().multiply(new Victor(gMap.tileSize/2, gMap.tileSize/2)));
-			elevationTileImageRect = new Rect(newImageRectOffset, newImageRectOffset.clone().add(newImageRectSize));
+		// // Find a parent tile image that is loaded
+		// while (elevationTile.lod < gMap.numLods-1 && elevationTile.elevationImage.loadingState != ETileLoadingState.loaded)
+		// {		
+		// 	// Recalculate our image rect
+		// 	var newImageRectSize = elevationTileImageRect.size.clone().divide(new Victor(2,2));
+		// 	var newImageRectOffset = elevationTileImageRect.min.clone().divide(new Victor(2,2)).add(elevationTile.childIndex.clone().multiply(new Victor(gMap.tileSize/2, gMap.tileSize/2)));
+		// 	elevationTileImageRect = new Rect(newImageRectOffset, newImageRectOffset.clone().add(newImageRectSize));
 
-			elevationTile = elevationTile.parent;			
-		}
+		// 	elevationTile = elevationTile.parent;			
+		// }
 
 		tiles.push({ 
-			screenTile: desiredTilesOnScreen[i], 
+			screenTile: desiredTilesOnScreen[i].tile, 
 			sourceAlbedoTile: albedoTile, 
 			sourceAlbedoTileRect: albedoTileImageRect,
 			sourceElevationTile: elevationTile,
 			sourceElevationTileRect: elevationTileImageRect
 		 });
+	}
+
+	// Link the neighbour tiles
+	for (var i=0; i<tiles.length; ++i)
+	{		
+		var neighbourIndices = desiredTilesOnScreen[i].neighbours;
+		tiles[i].neighbour00 = (neighbourIndices[0] >= 0) ? tiles[neighbourIndices[0]] : null;
+		tiles[i].neighbour01 = (neighbourIndices[1] >= 0) ? tiles[neighbourIndices[1]] : null;
+		tiles[i].neighbour02 = (neighbourIndices[2] >= 0) ? tiles[neighbourIndices[2]] : null;
+		tiles[i].neighbour10 = (neighbourIndices[3] >= 0) ? tiles[neighbourIndices[3]] : null;
+		// tiles[i].neighbour11 = (neighbourIndices[4] >= 0) ? tiles[neighbourIndices[4]] : null;
+		tiles[i].neighbour12 = (neighbourIndices[5] >= 0) ? tiles[neighbourIndices[5]] : null;
+		tiles[i].neighbour20 = (neighbourIndices[6] >= 0) ? tiles[neighbourIndices[6]] : null;
+		tiles[i].neighbour21 = (neighbourIndices[7] >= 0) ? tiles[neighbourIndices[7]] : null;
+		tiles[i].neighbour22 = (neighbourIndices[8] >= 0) ? tiles[neighbourIndices[8]] : null;				
 	}
 
 	return tiles;
@@ -651,95 +694,72 @@ function draw()
 	visitTileChildren(gRootTile, tile => {tile.isVisible = false;});
 
 	var desiredLod = calcDesiredLod();
+	var visibleTiles = getVisibleTiles(desiredLod, gView);
+
+	noStroke();
+	shader(gTileShader);
+	perspective(gFOVy, gRenderWidth/gRenderHeight, 0.01, 100.0);
+
+	cameraZ = (0.5*gView.screenRect.size.y*gView.worldScale) / Math.tan(0.5*gFOVy);
+
+	// Rotate camera in 2D (ZY space) around bottom of world
+	var cameraPos = new Victor(cameraZ, gView.worldCenter.y);
+	var cameraFwd = new Victor(-1.0, 0.0);
+	var planeBottomCenterPos = new Victor(0.0, gView.worldCenter.y + gView.worldRect.size.y/2.0);
+	var pitchAngle = gDebugSettings.cameraPitchAngle;
+	var cameraOffset = cameraPos.clone().subtract(planeBottomCenterPos).rotate(pitchAngle);
+	cameraFwd.rotate(pitchAngle);
+
+	cameraPos = planeBottomCenterPos.clone().add(cameraOffset);
+	var targetPos = cameraPos.clone().add(cameraFwd);
+
+	camera(
+		gView.worldCenter.x, cameraPos.y, cameraPos.x,
+		gView.worldCenter.x, targetPos.y, targetPos.x,
+		0,-cameraFwd.x,cameraFwd.y);
+
+	// Render all tiles within the quadrant
+	for (var i=0; i<visibleTiles.length; ++i)
+	{	
+		var visibleTile = visibleTiles[i];
+
+		if (!visibleTile.screenTile.valid)
+			continue;
+
+		// Mark this tile as being visible, uncluding all its parents
+		visitTileParents(visibleTile.screenTile, tile => {tile.isVisible = true;});
+
+		if (visibleTile.sourceAlbedoTile.albedoImage.loadingState != ETileLoadingState.loaded ||
+			visibleTile.sourceElevationTile.elevationImage.loadingState != ETileLoadingState.loaded)
+			continue;
+
+		gTileShader.setUniform('uReliefDepth', gDebugSettings.reliefDepth);
+		// gTileShader.setUniform('uAlbedoTexture', visibleTile.sourceAlbedoTile.albedoImage.image);
+
+		gTileShader.setUniform('uAlbedoTexture00', visibleTile.sourceAlbedoTile.albedoImage.image);
+		gTileShader.setUniform('uAlbedoTexture01', visibleTile.neighbour12 != null && visibleTile.neighbour12.screenTile.valid && visibleTile.neighbour12.sourceAlbedoTile.albedoImage.loadingState == ETileLoadingState.loaded ? visibleTile.neighbour12.sourceAlbedoTile.albedoImage.image : visibleTile.sourceAlbedoTile.albedoImage.image);
+		gTileShader.setUniform('uAlbedoTexture10', visibleTile.neighbour01 != null && visibleTile.neighbour01.screenTile.valid && visibleTile.neighbour01.sourceAlbedoTile.albedoImage.loadingState == ETileLoadingState.loaded ? visibleTile.neighbour01.sourceAlbedoTile.albedoImage.image : visibleTile.sourceAlbedoTile.albedoImage.image);
+		gTileShader.setUniform('uAlbedoTexture11', visibleTile.neighbour02 != null && visibleTile.neighbour02.screenTile.valid && visibleTile.neighbour02.sourceAlbedoTile.albedoImage.loadingState == ETileLoadingState.loaded ? visibleTile.neighbour02.sourceAlbedoTile.albedoImage.image : visibleTile.sourceAlbedoTile.albedoImage.image);
+
+		
 
 
+		gTileShader.setUniform('uAlbedoTextureTopLeft', [visibleTile.sourceAlbedoTileRect.min.x / gMap.tileSize, visibleTile.sourceAlbedoTileRect.min.y / gMap.tileSize]);
+		gTileShader.setUniform('uAlbedoTextureSize', [visibleTile.sourceAlbedoTileRect.size.x / gMap.tileSize, visibleTile.sourceAlbedoTileRect.size.y / gMap.tileSize]);
 
-	for (var qy=-3; qy<=1; qy+=2)
-	for (var qx=-3; qx<=3; qx+=2)
-	{
-		var viewScreenOffset = new Victor(qx*gRenderWidth/4, qy*gRenderHeight/4);
-		var quadrantView = gView.clone();
+		gTileShader.setUniform('uElevationTexture00', visibleTile.sourceElevationTile.elevationImage.image);
+		gTileShader.setUniform('uElevationTexture01', visibleTile.neighbour12 != null && visibleTile.neighbour12.screenTile.valid && visibleTile.neighbour12.sourceElevationTile.elevationImage.loadingState == ETileLoadingState.loaded ? visibleTile.neighbour12.sourceElevationTile.elevationImage.image : visibleTile.sourceElevationTile.elevationImage.image);
+		gTileShader.setUniform('uElevationTexture10', visibleTile.neighbour01 != null && visibleTile.neighbour01.screenTile.valid && visibleTile.neighbour01.sourceElevationTile.elevationImage.loadingState == ETileLoadingState.loaded ? visibleTile.neighbour01.sourceElevationTile.elevationImage.image : visibleTile.sourceElevationTile.elevationImage.image);
+		gTileShader.setUniform('uElevationTexture11', visibleTile.neighbour02 != null && visibleTile.neighbour02.screenTile.valid && visibleTile.neighbour02.sourceElevationTile.elevationImage.loadingState == ETileLoadingState.loaded ? visibleTile.neighbour02.sourceElevationTile.elevationImage.image : visibleTile.sourceElevationTile.elevationImage.image);
 
-		// Apply screenspace offset for quadrant
-		quadrantView.screenRect.min.add(viewScreenOffset);
-		quadrantView.screenRect.max.add(viewScreenOffset);
-		quadrantView.worldCenter.add(new Victor(gView.screenToWorldScale(viewScreenOffset.x), gView.screenToWorldScale(viewScreenOffset.y)));
+		// gTileShader.setUniform('uElevationTexture', visibleTile.sourceElevationTile.elevationImage.image);
+		gTileShader.setUniform('uElevationTextureTopLeft', [visibleTile.sourceElevationTileRect.min.x / gMap.tileSize, visibleTile.sourceElevationTileRect.min.y / gMap.tileSize]);
+		gTileShader.setUniform('uElevationTextureSize', [visibleTile.sourceElevationTileRect.size.x / gMap.tileSize, visibleTile.sourceElevationTileRect.size.y / gMap.tileSize]);
 
-		var visibleTiles = getVisibleTiles(desiredLod, quadrantView);
-
-		// Prepare rendering to offscreen buffer
-		gTilesOffscreenGraphics.clear();
-		gTilesOffscreenGraphics.noStroke();
-		gTilesOffscreenGraphics.shader(gTileShader);
-		gTilesOffscreenGraphics.perspective(gFOVy, gRenderWidth/gRenderHeight, 0.01, 100.0);
-
-		var cameraZ = (0.5*quadrantView.screenRect.size.y*quadrantView.worldScale) / Math.tan(0.5*gFOVy);
-
-		gTilesOffscreenGraphics.camera(
-			quadrantView.worldCenter.x, quadrantView.worldCenter.y, cameraZ,
-			quadrantView.worldCenter.x, quadrantView.worldCenter.y, 0,
-			0,1,0);
-
-		// Render all tiles within the quadrant
-		for (var i=0; i<visibleTiles.length; ++i)
-		{	
-			var visibleTile = visibleTiles[i];
-
-			// Mark this tile as being visible, uncluding all its parents
-			visitTileParents(visibleTile.screenTile, tile => {tile.isVisible = true;});
-
-			if (visibleTile.sourceAlbedoTile.albedoImage.loadingState != ETileLoadingState.loaded ||
-				visibleTile.sourceElevationTile.elevationImage.loadingState != ETileLoadingState.loaded)
-				continue;
-
-			gTileShader.setUniform('uAlbedoTexture', visibleTile.sourceAlbedoTile.albedoImage.image);
-			gTileShader.setUniform('uAlbedoTextureTopLeft', [visibleTile.sourceAlbedoTileRect.min.x / gMap.tileSize, visibleTile.sourceAlbedoTileRect.min.y / gMap.tileSize]);
-			gTileShader.setUniform('uAlbedoTextureSize', [visibleTile.sourceAlbedoTileRect.size.x / gMap.tileSize, visibleTile.sourceAlbedoTileRect.size.y / gMap.tileSize]);
-
-			gTileShader.setUniform('uElevationTexture', visibleTile.sourceElevationTile.elevationImage.image);
-			gTileShader.setUniform('uElevationTextureTopLeft', [visibleTile.sourceElevationTileRect.min.x / gMap.tileSize, visibleTile.sourceElevationTileRect.min.y / gMap.tileSize]);
-			gTileShader.setUniform('uElevationTextureSize', [visibleTile.sourceElevationTileRect.size.x / gMap.tileSize, visibleTile.sourceElevationTileRect.size.y / gMap.tileSize]);
-
-			// Draw our tile
-			gTilesOffscreenGraphics.push();
-			gTilesOffscreenGraphics.translate(visibleTile.screenTile.worldRect.center.x, visibleTile.screenTile.worldRect.center.y);
-			gTilesOffscreenGraphics.plane(visibleTile.screenTile.worldRect.size.x, visibleTile.screenTile.worldRect.size.y);
-			gTilesOffscreenGraphics.pop();
-		}
-
-		gTilesOffscreenGraphics.resetShader();
-
-		// Render a quadrant to the screen
-		noStroke();
-		shader(gMapShader);
-		perspective(gFOVy, gRenderWidth/gRenderHeight, 0.01, 100.0);
-
-		cameraZ = (0.5*gView.screenRect.size.y*gView.worldScale) / Math.tan(0.5*gFOVy);
-
-		// Rotate camera in 2D (ZY space) around bottom of world
-		var cameraPos = new Victor(cameraZ, gView.worldCenter.y);
-		var cameraFwd = new Victor(-1.0, 0.0);
-		var planeBottomCenterPos = new Victor(0.0, gView.worldCenter.y + gView.worldRect.size.y/2.0);
-		var cameraOffset = cameraPos.clone().subtract(planeBottomCenterPos).rotate(gDebugSettings.cameraPitchAngle);
-		cameraFwd.rotate(gDebugSettings.cameraPitchAngle);
-
-		cameraPos = planeBottomCenterPos.clone().add(cameraOffset);
-		var targetPos = cameraPos.clone().add(cameraFwd);
-
-		camera(
-			gView.worldCenter.x, cameraPos.y, cameraPos.x,
-			gView.worldCenter.x, targetPos.y, targetPos.x,
-			0,-cameraFwd.x,cameraFwd.y);
-				
-		gMapShader.setUniform('uScreenOffset', [2*viewScreenOffset.x/gRenderWidth, 2*viewScreenOffset.y/gRenderHeight]);
-		gMapShader.setUniform('uTilesTexture', gTilesOffscreenGraphics);
-		gMapShader.setUniform('uPlaneZ', -cameraZ);
-		gMapShader.setUniform('uReliefDepth', gDebugSettings.reliefDepth);		
-
+		// Draw our tile
 		push();
-		//rotateX(gDebugSettings.cameraPitchAngle);		
-		translate(gView.worldCenter.x + qx*gView.worldRect.size.x/4.0, gView.worldCenter.y + qy*gView.worldRect.size.y/4.0);
-		plane(gView.worldRect.size.x / 2, gView.worldRect.size.y / 2);
+		translate(visibleTile.screenTile.worldRect.center.x, visibleTile.screenTile.worldRect.center.y);
+		plane(visibleTile.screenTile.worldRect.size.x, visibleTile.screenTile.worldRect.size.y);
 		pop();
 	}
 

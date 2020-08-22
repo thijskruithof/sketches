@@ -1,3 +1,5 @@
+precision mediump float;
+
 attribute vec3 aPosition;
 attribute vec2 aTexCoord;
 
@@ -9,14 +11,24 @@ uniform vec2 uAlbedoTextureSize;
 uniform vec2 uElevationTextureTopLeft;
 uniform vec2 uElevationTextureSize;
 
-varying vec2 vAlbedoUV;
-varying vec2 vElevationUV;
+varying vec2 vUV;
+varying vec3 vPositionView;
+varying vec3 vEyeGroundNormal;
+varying vec3 vEyeGroundTangent;
+varying vec3 vEyeGroundBitangent;
 
 void main() 
 {
     vec4 positionVec4 = vec4(aPosition, 1.0);
     gl_Position = uProjectionMatrix * uModelViewMatrix * positionVec4;
 
-    vAlbedoUV = uAlbedoTextureTopLeft + aTexCoord * uAlbedoTextureSize;
-    vElevationUV = uElevationTextureTopLeft + aTexCoord * uElevationTextureSize;
+    vUV = aTexCoord;
+    // vAlbedoUV = uAlbedoTextureTopLeft + aTexCoord * uAlbedoTextureSize;
+    // vElevationUV = uElevationTextureTopLeft + aTexCoord * uElevationTextureSize;
+
+    vPositionView = (uModelViewMatrix * positionVec4).xyz;
+
+    vEyeGroundNormal = (uModelViewMatrix * vec4(0.0, 0.0, 1.0, 0.0)).xyz;
+    vEyeGroundTangent = (uModelViewMatrix * vec4(1.0, 0.0, 0.0, 0.0)).xyz;
+    vEyeGroundBitangent = cross(vEyeGroundNormal, vEyeGroundTangent);
 }

@@ -11,6 +11,9 @@ uniform vec2 uAlbedoTextureSize;
 uniform vec2 uElevationTextureTopLeft;
 uniform vec2 uElevationTextureSize;
 
+uniform vec2 uUVTopLeft;
+uniform vec2 uUVBottomRight;
+
 varying vec2 vUV;
 varying vec3 vPositionView;
 varying vec3 vEyeGroundNormal;
@@ -22,7 +25,8 @@ void main()
     vec4 positionVec4 = vec4(aPosition, 1.0);
     gl_Position = uProjectionMatrix * uModelViewMatrix * positionVec4;
 
-    vUV = aTexCoord;
+    vUV = mix(uUVTopLeft, uUVBottomRight, aTexCoord);
+
     // vAlbedoUV = uAlbedoTextureTopLeft + aTexCoord * uAlbedoTextureSize;
     // vElevationUV = uElevationTextureTopLeft + aTexCoord * uElevationTextureSize;
 

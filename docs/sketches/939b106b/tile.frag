@@ -140,13 +140,5 @@ void main()
 	float dist = find_intersection(vUV, ds);
 	vec2 uv = vUV + dist * ds;
 
-    uv = uAlbedoTextureTopLeft + uv * uAlbedoTextureSize;
-
-    //gl_FragColor = vec4(texture2D(uAlbedoTexture, vAlbedoUV).xyz, texture2D(uElevationTexture, vElevationUV).x);
     gl_FragColor = vec4(sampleAlbedo3x3(uv), 1.0);
-
-    // if (uv.x > 1.0)
-    //     gl_FragColor.r = 1.0;
-    // float k = sampleElevation(uv);
-    // gl_FragColor = vec4(sampleAlbedo3x3(uv), 1.0);
 }

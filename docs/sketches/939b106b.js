@@ -125,6 +125,156 @@ class Rect
 	}
 }
 
+class FrustumPlane2D
+{
+	constructor (frustumPlaneA, frustumPlaneB, frustumPlaneC, frustumPlaneD)
+	{
+		// Normalize our plane's coeffs
+		var planeMag = Math.sqrt(
+			frustumPlaneA*frustumPlaneA+
+			frustumPlaneB*frustumPlaneB+
+			frustumPlaneC*frustumPlaneC);
+
+		frustumPlaneA /= planeMag;
+		frustumPlaneB /= planeMag;
+		frustumPlaneC /= planeMag;
+		frustumPlaneD /= planeMag;
+
+		// Calculate the edge between the frustum plane and the XY plane
+
+		// Intersection ray's dir is normal(cross(normal, xyplane.normal)),
+		// Which equals to:
+		//  normalize(cross(normal, [0,0,1]))
+		//  normalize(normal.y, -normal.x, 0)
+		//
+		// And because normal equals to [a,b,c]:
+		//  normalize(b, -a)
+		this.dir = new Victor(frustumPlaneB, -frustumPlaneA);
+		this.dir.normalize();
+
+		// Then we have to calculate a position on on both planes.
+		//
+		// Our own plane says:
+		// 	N*(V - pos) = 0
+		// And our XY plane says:
+		//  posz = 0
+		//
+		// So we can solve this by combining the two:
+		//   Nx(Vx - posx) + Ny(Vy - posy) - Nz*posz = 0
+		//
+		// And then let's assume Vx = 0:
+		//   -Nx*posx + Ny(Vy - posy) - Nz*posz = 0
+		//  Ny(Vy - posy) = Nx*posx + Nz*posz
+		//  Vy = (Nx*posx + Nz*posz)/Ny + posy
+		//  Vx = 0
+		//
+		// Note: this only works if Ny != 0. So we'll have to find a solution for when Ny ~= 0
+		//
+		// We can find that by solving for Vy = 0 (instead of Vx = 0):
+		//  Nx(Vx - posx) - Ny*posy - Nz*posz = 0
+		//  Nx(Vx - posx) = Ny*posy + Nz*posz
+		//  Vx = (Ny*posy + Nz*posz)/Nx + posx
+		//  Vy = 0
+		//
+		// And for both we subsitute normal with [a,b,c] and pos with [-d*a,-d*b,-d*c]:
+		//
+		// (1) Vy = (Nx*posx + Nz*posz)/Ny + posy
+		//     Vy = (a*-d*a + c*-d*c)/b + -d*b
+		//     Vy = -d*((a*a + c*c)/b + b)
+		//
+		// (2) Vx = (Ny*posy + Nz*posz)/Nx + posx
+		//     Vx = (b*-d*b + c*-d*c)/a + -d*a
+		//     Vx = -d*((b*v + c*c)/a + a)
+		//
+		if (Math.abs(frustumPlaneB) > Math.abs(frustumPlaneA))
+			this.pos = new Victor(0.0, -frustumPlaneD*((frustumPlaneA*frustumPlaneA + frustumPlaneC*frustumPlaneC)/frustumPlaneB + frustumPlaneB));
+		else
+			this.pos = new Victor(-frustumPlaneD*((frustumPlaneB*frustumPlaneB + frustumPlaneC*frustumPlaneC)/frustumPlaneA + frustumPlaneA), 0.0);
+	}
+
+	// Calculate intersection with another 2d frustum plane
+	// Returns the intersection position (Victor)
+	intersect(otherPlane)
+	{
+		// Solve for: 
+		//  a(t) = b(t)
+		// Where:
+		//  a(u) = adir*u + apos
+		//  b(v) = bdir*v + bpos
+		//
+		// Option 1:
+		// Solve for x:
+		//  adirx*u + aposx = bdirx*v + bposx
+		//  u = (bdirx/adirx)*v + (bposx - aposx)/adirx
+		//
+		// Solve for y:
+		//  adiry*u + aposy = bdiry*v + bposy
+		//  adiry*((bdirx/adirx)*v + (bposx - aposx)/adirx) + aposy = bdiry*v + bposy
+		//  adiry*(bdirx/adirx)*v + (adiry/adirx)*(bposx - aposx) + aposy = bdiry*v + bposy
+
+		//  (adiry*(bdirx/adirx) - bdiry)*v = (bposy - aposy) - (adiry/adirx)*(bposx - aposx) 
+		//  v = ((bposy - aposy) - (adiry/adirx)*(bposx - aposx)) / (adiry*(bdirx/adirx) - bdiry)		
+		//
+		// Option 2: Same as option 1, but then solved for y first and then for x,
+		// which effectively gives the same solution as option 1, but then all x and y swapped.
+
+		var v;
+
+		if (Math.abs(this.dir.x) > Math.abs(this.dir.y))
+			v = ((otherPlane.pos.y - this.pos.y) - (this.dir.y/this.dir.x)*(otherPlane.pos.x - this.pos.x)) /
+				(this.dir.y*(otherPlane.dir.x/this.dir.x) - otherPlane.dir.y);
+		else
+			v = ((otherPlane.pos.x - this.pos.x) - (this.dir.x/this.dir.y)*(otherPlane.pos.y - this.pos.y)) /
+				(this.dir.x*(otherPlane.dir.y/this.dir.y) - otherPlane.dir.x);
+
+		return otherPlane.dir.clone().multiply(new Victor(v,v)).add(otherPlane.pos);
+	}
+}
+
+
+class Frustum2D
+{
+	constructor(mvpMatrix)
+	{
+		// Based on http://www.cs.otago.ac.nz/postgrads/alexis/planeExtraction.pdf
+
+		var planeLeft = new FrustumPlane2D( 
+	 		mvpMatrix[3] + mvpMatrix[0],
+	 		mvpMatrix[7] + mvpMatrix[4],
+	 		mvpMatrix[11] + mvpMatrix[8],
+	 		mvpMatrix[15] + mvpMatrix[12]
+	 	);
+
+		var planeRight = new FrustumPlane2D( 
+	 		mvpMatrix[3]  - mvpMatrix[0],
+	 		mvpMatrix[7]  - mvpMatrix[4],
+	 		mvpMatrix[11] - mvpMatrix[8],
+	 		mvpMatrix[15] - mvpMatrix[12]
+	 	);
+
+	 	var planeTop = new FrustumPlane2D( 
+	 		mvpMatrix[3]  - mvpMatrix[1],
+	 		mvpMatrix[7]  - mvpMatrix[5],
+	 		mvpMatrix[11] - mvpMatrix[9],
+	 		mvpMatrix[15] - mvpMatrix[13]
+	 	);
+	 	
+	 	var planeBottom = new FrustumPlane2D( 
+	 		mvpMatrix[3]  + mvpMatrix[1],
+	 		mvpMatrix[7]  + mvpMatrix[5],
+	 		mvpMatrix[11] + mvpMatrix[9],
+	 		mvpMatrix[15] + mvpMatrix[13]
+	 	);
+
+	 	// Calculate corners of 2D frustum (in 2D)
+	 	this.tl = planeLeft.intersect(planeTop);
+	 	this.bl = planeLeft.intersect(planeBottom);
+	 	this.tr = planeRight.intersect(planeTop);
+	 	this.br = planeRight.intersect(planeBottom);		
+	} 
+}
+
+
 class View 
 {
 	constructor(screenRect)
@@ -785,6 +935,10 @@ function draw()
 		gView.worldCenter.x, cameraPos.y, cameraPos.x,
 		gView.worldCenter.x, targetPos.y, targetPos.x,
 		0,-cameraFwd.x,cameraFwd.y);
+
+	var cam = this._renderer._curCamera;
+	var mvp = cam.cameraMatrix.copy().mult(cam.projMatrix);
+	var frustum = new Frustum2D(mvp.mat4);
 
 	// Calculate the position in the world that we're actually looking at
 	var amount = cameraPos.x / cameraFwd.x;

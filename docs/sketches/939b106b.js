@@ -125,7 +125,11 @@ class Rect
 	}
 }
 
-class FrustumPlane2D
+
+/**
+ * An edge of the frustum in 2D, in the world XY plane
+ */
+class FrustumEdge2D
 {
 	constructor (frustumPlaneA, frustumPlaneB, frustumPlaneC, frustumPlaneD)
 	{
@@ -149,8 +153,8 @@ class FrustumPlane2D
 		//
 		// And because normal equals to [a,b,c]:
 		//  normalize(b, -a)
-		this.dir = new Victor(frustumPlaneB, -frustumPlaneA);
-		this.dir.normalize();
+		this.edgeDir = new Victor(frustumPlaneB, -frustumPlaneA);
+		this.edgeDir.normalize();
 
 		// Then we have to calculate a position on on both planes.
 		//
@@ -187,9 +191,13 @@ class FrustumPlane2D
 		//     Vx = -d*((b*v + c*c)/a + a)
 		//
 		if (Math.abs(frustumPlaneB) > Math.abs(frustumPlaneA))
-			this.pos = new Victor(0.0, -frustumPlaneD*((frustumPlaneA*frustumPlaneA + frustumPlaneC*frustumPlaneC)/frustumPlaneB + frustumPlaneB));
+			this.edgePos = new Victor(0.0, -frustumPlaneD*((frustumPlaneA*frustumPlaneA + frustumPlaneC*frustumPlaneC)/frustumPlaneB + frustumPlaneB));
 		else
-			this.pos = new Victor(-frustumPlaneD*((frustumPlaneB*frustumPlaneB + frustumPlaneC*frustumPlaneC)/frustumPlaneA + frustumPlaneA), 0.0);
+			this.edgePos = new Victor(-frustumPlaneD*((frustumPlaneB*frustumPlaneB + frustumPlaneC*frustumPlaneC)/frustumPlaneA + frustumPlaneA), 0.0);
+
+		// Plane normal points to the inside of the 2D frustum area
+		this.planeNormal = new Victor(-this.edgeDir.y, this.edgeDir.x);			
+		this.planePos = this.edgePos.clone();
 	}
 
 	// Calculate intersection with another 2d frustum plane
@@ -220,14 +228,29 @@ class FrustumPlane2D
 
 		var v;
 
-		if (Math.abs(this.dir.x) > Math.abs(this.dir.y))
-			v = ((otherPlane.pos.y - this.pos.y) - (this.dir.y/this.dir.x)*(otherPlane.pos.x - this.pos.x)) /
-				(this.dir.y*(otherPlane.dir.x/this.dir.x) - otherPlane.dir.y);
+		if (Math.abs(this.edgeDir.x) > Math.abs(this.edgeDir.y))
+			v = ((otherPlane.edgePos.y - this.edgePos.y) - (this.edgeDir.y/this.edgeDir.x)*(otherPlane.edgePos.x - this.edgePos.x)) /
+				(this.edgeDir.y*(otherPlane.edgeDir.x/this.edgeDir.x) - otherPlane.edgeDir.y);
 		else
-			v = ((otherPlane.pos.x - this.pos.x) - (this.dir.x/this.dir.y)*(otherPlane.pos.y - this.pos.y)) /
-				(this.dir.x*(otherPlane.dir.y/this.dir.y) - otherPlane.dir.x);
+			v = ((otherPlane.edgePos.x - this.edgePos.x) - (this.edgeDir.x/this.edgeDir.y)*(otherPlane.edgePos.y - this.edgePos.y)) /
+				(this.edgeDir.x*(otherPlane.edgeDir.y/this.edgeDir.y) - otherPlane.edgeDir.x);
 
-		return otherPlane.dir.clone().multiply(new Victor(v,v)).add(otherPlane.pos);
+		return otherPlane.edgeDir.clone().multiply(new Victor(v,v)).add(otherPlane.edgePos);
+	}
+
+	isOnBackSide(pos)
+	{
+		return pos.clone().subtract(this.planePos).dot(this.planeNormal) < 0.0;
+	}
+
+	
+	isCompletelyOnBackSide(rect)
+	{
+		// Check the rect's 4 corners
+		return this.isOnBackSide(rect.min) &&
+			this.isOnBackSide(rect.max) &&
+			this.isOnBackSide(new Victor(rect.max.x, rect.min.y)) &&
+			this.isOnBackSide(new Victor(rect.min.x, rect.max.y));
 	}
 }
 
@@ -238,28 +261,28 @@ class Frustum2D
 	{
 		// Based on http://www.cs.otago.ac.nz/postgrads/alexis/planeExtraction.pdf
 
-		var planeLeft = new FrustumPlane2D( 
+		this.edgeLeft = new FrustumEdge2D( 
 	 		mvpMatrix[3] + mvpMatrix[0],
 	 		mvpMatrix[7] + mvpMatrix[4],
 	 		mvpMatrix[11] + mvpMatrix[8],
 	 		mvpMatrix[15] + mvpMatrix[12]
 	 	);
 
-		var planeRight = new FrustumPlane2D( 
+		this.edgeRight = new FrustumEdge2D( 
 	 		mvpMatrix[3]  - mvpMatrix[0],
 	 		mvpMatrix[7]  - mvpMatrix[4],
 	 		mvpMatrix[11] - mvpMatrix[8],
 	 		mvpMatrix[15] - mvpMatrix[12]
 	 	);
 
-	 	var planeTop = new FrustumPlane2D( 
+	 	this.edgeTop = new FrustumEdge2D( 
 	 		mvpMatrix[3]  - mvpMatrix[1],
 	 		mvpMatrix[7]  - mvpMatrix[5],
 	 		mvpMatrix[11] - mvpMatrix[9],
 	 		mvpMatrix[15] - mvpMatrix[13]
 	 	);
 	 	
-	 	var planeBottom = new FrustumPlane2D( 
+	 	this.edgeBottom = new FrustumEdge2D( 
 	 		mvpMatrix[3]  + mvpMatrix[1],
 	 		mvpMatrix[7]  + mvpMatrix[5],
 	 		mvpMatrix[11] + mvpMatrix[9],
@@ -267,11 +290,28 @@ class Frustum2D
 	 	);
 
 	 	// Calculate corners of 2D frustum (in 2D)
-	 	this.tl = planeLeft.intersect(planeTop);
-	 	this.bl = planeLeft.intersect(planeBottom);
-	 	this.tr = planeRight.intersect(planeTop);
-	 	this.br = planeRight.intersect(planeBottom);		
+	 	this.posTopLeft = this.edgeLeft.intersect(this.edgeTop);
+	 	this.posBottomLeft = this.edgeLeft.intersect(this.edgeBottom);
+	 	this.posTopRight = this.edgeRight.intersect(this.edgeTop);
+		this.posBottomRight = this.edgeRight.intersect(this.edgeBottom);		
+		 
+		// Calculate axis-aligned bounds rect in world space
+		// note: we assume here that our camera only contains pitch, so the frustum is always horizontal.
+		this.worldBoundsRect = new Rect(
+			new Victor(Math.min(this.posTopLeft.x,this.posBottomLeft.x), this.posTopLeft.y),
+			new Victor(Math.max(this.posTopRight.x,this.posBottomRight.x), this.posBottomRight.y)
+		);
 	} 
+
+	// Check if this 2D frustum overlaps with the given worldrect
+	overlaps(worldRect)
+	{		
+		// note: we assume here that our camera only contains pitch, so the frustum is always horizontal.
+		return worldRect.max.y >= this.posTopLeft.y &&
+			worldRect.min.y <= this.posBottomRight.y &&
+			!this.edgeLeft.isCompletelyOnBackSide(worldRect) &&
+			!this.edgeRight.isCompletelyOnBackSide(worldRect);
+	}
 }
 
 
@@ -441,11 +481,13 @@ class TileGrid
 		this.tiles[tile.cellIndex.y*this.numTilesPerAxis+tile.cellIndex.x] = tile;
 	}
 
-	getTilesInWorldRect(worldRect)
+	getTilesInFrustum(frustum)
 	{
+		var worldBoundsRect = frustum.worldBoundsRect;
+
 		var tileSize = pow(2, this.lod);
-		var tl = new Victor(Math.floor(worldRect.min.x/tileSize), Math.floor(worldRect.min.y/tileSize));
-		var br = new Victor(Math.floor(worldRect.max.x/tileSize), Math.floor(worldRect.max.y/tileSize));
+		var tl = new Victor(Math.floor(worldBoundsRect.min.x/tileSize), Math.floor(worldBoundsRect.min.y/tileSize));
+		var br = new Victor(Math.floor(worldBoundsRect.max.x/tileSize), Math.floor(worldBoundsRect.max.y/tileSize));
 
 		// Clamp window to valid range
 		tl.x = Math.min(this.numTilesPerAxis-1, Math.max(0, tl.x));
@@ -456,14 +498,16 @@ class TileGrid
 		var numCellsY = (br.y - tl.y)+1;
 		var numCellsX = (br.x - tl.x)+1;
 
-		// Gather all tiles
+		// Gather all tiles that overlap our frustum
 		var result = [];
 		for (var y=tl.y; y<=br.y; ++y)
 		{
 			for (var x=tl.x; x<=br.x; ++x)
 			{
 				var t = this.tiles[y*this.numTilesPerAxis+x];
-				result.push({ tile: t, index: [y-tl.y,x-tl.x] });
+
+				if (frustum.overlaps(t.worldRect))
+					result.push({ tile: t, index: [y-tl.y,x-tl.x] });
 			}
 		}
 
@@ -760,10 +804,10 @@ function calcDesiredLod()
 }
 
 
-function getVisibleTiles(desiredLod, view)
+function getVisibleTiles(desiredLod, frustum)
 {
 	var desiredTileGrid = gTileGrids[desiredLod];
-	var desiredTilesOnScreen = desiredTileGrid.getTilesInWorldRect(view.worldRect);
+	var desiredTilesOnScreen = desiredTileGrid.getTilesInFrustum(frustum);
 
 	var tiles = [];
 	for (var i=0; i<desiredTilesOnScreen.length; ++i)
@@ -908,12 +952,6 @@ function draw()
 	gView.applyViewLimits();	
 
 	clear();
-
-	visitTileChildren(gRootTile, tile => {tile.isVisible = false;});
-
-	var desiredLod = calcDesiredLod();
-	var visibleTiles = getVisibleTiles(desiredLod, gView);
-
 	noStroke();
 	shader(gTileShader);
 	perspective(gFOVy, gRenderWidth/gRenderHeight, 0.01, 100.0);
@@ -939,6 +977,11 @@ function draw()
 	var cam = this._renderer._curCamera;
 	var mvp = cam.cameraMatrix.copy().mult(cam.projMatrix);
 	var frustum = new Frustum2D(mvp.mat4);
+
+	visitTileChildren(gRootTile, tile => {tile.isVisible = false;});
+
+	var desiredLod = calcDesiredLod();
+	var visibleTiles = getVisibleTiles(desiredLod, frustum);
 
 	// Calculate the position in the world that we're actually looking at
 	var amount = cameraPos.x / cameraFwd.x;

@@ -506,8 +506,8 @@ class TileGrid
 			{
 				var t = this.tiles[y*this.numTilesPerAxis+x];
 
-				if (frustum.overlaps(t.worldRect))
-					result.push({ tile: t, index: [y-tl.y,x-tl.x] });
+				//if (frustum.overlaps(t.worldRect))
+				result.push({ tile: t, index: [y-tl.y,x-tl.x] });
 			}
 		}
 
@@ -583,8 +583,8 @@ var gDebugSettings = {
 	mapIndex: 1,
 	loadOneByOne: false,
 	showTileMiniMap: false,
-	reliefDepth: 0.33,
-	cameraPitchAngle: 0.54
+	reliefDepth: 0.48,
+	cameraPitchAngle: 0.71
 };
 
 
@@ -984,9 +984,9 @@ function draw()
 	var visibleTiles = getVisibleTiles(desiredLod, frustum);
 
 	// Calculate the position in the world that we're actually looking at
-	var amount = cameraPos.x / cameraFwd.x;
-	var viewCenterWorldPos = cameraPos.clone().add(cameraFwd.multiply(new Victor(amount, amount)));
-	viewCenterWorldPos = new Victor(gView.worldCenter.x, viewCenterWorldPos.y, viewCenterWorldPos.x);
+	var viewCenterWorldPos = new Victor(
+		gView.worldCenter.x, 
+		cameraPos.y);// + cameraFwd.y * (cameraPos.x / -cameraFwd.x));
 
 	// Render all tiles within the quadrant
 	for (var i=0; i<visibleTiles.length; ++i)

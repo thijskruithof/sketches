@@ -461,6 +461,9 @@ class Tile
 
 		this.albedoImage = new TileImage(gMap.albedoImagePath(this));
 		this.elevationImage = new TileImage(gMap.elevationImagePath(this));
+
+		// 3x3 neighbours
+		this.neighbours = [null,null,null,null,null,null,null,null,null];
 	}
 }
 
@@ -479,6 +482,35 @@ class TileGrid
 	addTile(tile)
 	{
 		this.tiles[tile.cellIndex.y*this.numTilesPerAxis+tile.cellIndex.x] = tile;
+	}
+
+	linkNeighbours()
+	{
+		for (var y=0; y<this.numTilesPerAxis; ++y)
+		{
+			for (var x=0; x<this.numTilesPerAxis; ++x)
+			{
+				var tile = this.tiles[y*this.numTilesPerAxis + x];
+
+				for (var iy=-1; iy<=1; ++iy)
+				{
+					var iiy = y+iy;
+					if (iiy < 0 || iiy >= this.numTilesPerAxis)
+						continue;
+
+					for (var ix=-1; ix<=1; ++ix)
+					{
+						var iix = x+ix;
+						if (iix < 0 || iix >= this.numTilesPerAxis)
+							continue;
+
+						if (this.tiles[iiy*this.numTilesPerAxis + iix].valid)
+							tile.neighbours[(iy+1)*3+(ix+1)] = this.tiles[iiy*this.numTilesPerAxis + iix];
+					}
+				}
+			}
+		}
+
 	}
 
 	getTilesInFrustum(frustum)
@@ -506,30 +538,8 @@ class TileGrid
 			{
 				var t = this.tiles[y*this.numTilesPerAxis+x];
 
-				//if (frustum.overlaps(t.worldRect))
-				result.push({ tile: t, index: [y-tl.y,x-tl.x] });
-			}
-		}
-
-		// Construct neighbour cell indices
-		for (var i=0; i<result.length; ++i)
-		{
-			var index = result[i].index;
-			result[i].neighbours = [];
-
-			for (var y=-1; y<=1; ++y)
-			{
-				for (var x=-1; x<=1; ++x)
-				{
-					var neighbourindex = -1;
-					if (index[0]+y >= 0 && index[0]+y < numCellsY &&
-						index[1]+x >= 0 && index[1]+x < numCellsX)
-					{
-						neighbourindex = i + y*numCellsX + x;
-					}
-					
-					result[i].neighbours.push(neighbourindex);
-				}
+				if (frustum.overlaps(t.worldRect))
+					result.push(t);
 			}
 		}
 
@@ -728,6 +738,10 @@ function selectMap(map)
 	gRootTile = new Tile(null, gMap.numLods-1, new Rect(new Victor(0,0), new Victor(maxTilesPerAxisLod0, maxTilesPerAxisLod0)), new Victor(0,0), new Victor(0,0));
 	gTileGrids[gMap.numLods-1].addTile(gRootTile);
 	createTileChildrenRecursive(gRootTile);
+
+	// Create neighbours
+	for (var lod=0; lod<gTileGrids.length; lod++)
+		gTileGrids[lod].linkNeighbours();
 }
 
 
@@ -815,8 +829,8 @@ function getVisibleTiles(desiredLod, frustum)
 		// if (!desiredTilesOnScreen[i].tile.valid)
 		// 	continue;
 
-		var albedoTile = desiredTilesOnScreen[i].tile;
-		var elevationTile = desiredTilesOnScreen[i].tile;
+		var albedoTile = desiredTilesOnScreen[i];
+		var elevationTile = albedoTile;
 
 		var albedoTileImageRect = new Rect(new Victor(0,0), new Victor(gMap.tileSize, gMap.tileSize));
 		var elevationTileImageRect = albedoTileImageRect.clone();
@@ -844,27 +858,12 @@ function getVisibleTiles(desiredLod, frustum)
 		// }
 
 		tiles.push({ 
-			screenTile: desiredTilesOnScreen[i].tile, 
+			screenTile: desiredTilesOnScreen[i], 
 			sourceAlbedoTile: albedoTile, 
 			sourceAlbedoTileRect: albedoTileImageRect,
 			sourceElevationTile: elevationTile,
 			sourceElevationTileRect: elevationTileImageRect
 		 });
-	}
-
-	// Link the neighbour tiles
-	for (var i=0; i<tiles.length; ++i)
-	{		
-		var neighbourIndices = desiredTilesOnScreen[i].neighbours;
-		tiles[i].neighbour00 = (neighbourIndices[0] >= 0) ? tiles[neighbourIndices[0]] : null;
-		tiles[i].neighbour01 = (neighbourIndices[1] >= 0) ? tiles[neighbourIndices[1]] : null;
-		tiles[i].neighbour02 = (neighbourIndices[2] >= 0) ? tiles[neighbourIndices[2]] : null;
-		tiles[i].neighbour10 = (neighbourIndices[3] >= 0) ? tiles[neighbourIndices[3]] : null;
-		// tiles[i].neighbour11 = (neighbourIndices[4] >= 0) ? tiles[neighbourIndices[4]] : null;
-		tiles[i].neighbour12 = (neighbourIndices[5] >= 0) ? tiles[neighbourIndices[5]] : null;
-		tiles[i].neighbour20 = (neighbourIndices[6] >= 0) ? tiles[neighbourIndices[6]] : null;
-		tiles[i].neighbour21 = (neighbourIndices[7] >= 0) ? tiles[neighbourIndices[7]] : null;
-		tiles[i].neighbour22 = (neighbourIndices[8] >= 0) ? tiles[neighbourIndices[8]] : null;				
 	}
 
 	return tiles;
@@ -876,20 +875,24 @@ function drawTile(visibleTile, viewCenterWorldPos, worldRect, uvRect, sourceAlbe
 	var right = worldRect.min.x >= viewCenterWorldPos.x;
 	var top = worldRect.min.y < viewCenterWorldPos.y;
 
-	var neighbour01 = right ? visibleTile.neighbour12 : visibleTile.neighbour10;
-	var neighbour10 = top ? visibleTile.neighbour01 : visibleTile.neighbour21;
-	var neighbour11 = right ? (top ? visibleTile.neighbour02 : visibleTile.neighbour22) : (top ? visibleTile.neighbour00 : visibleTile.neighbour20);
+	var neighbour01 = right ? 5 : 3; 
+	var neighbour10 = top ? 1 : 7; 
+	var neighbour11 = right ? (top ? 2 : 8) : (top ? 0 : 6);
+
+	var n01 = visibleTile.screenTile.neighbours[neighbour01];
+	var n10 = visibleTile.screenTile.neighbours[neighbour10];
+	var n11 = visibleTile.screenTile.neighbours[neighbour11];
 
 	gTileShader.setUniform('uReliefDepth', gDebugSettings.reliefDepth);
 
 	gTileShader.setUniform('uAlbedoTexture00', visibleTile.sourceAlbedoTile.albedoImage.image);
-	gTileShader.setUniform('uAlbedoTexture01', neighbour01 != null && neighbour01.screenTile.valid && neighbour01.sourceAlbedoTile.albedoImage.loadingState == ETileLoadingState.loaded ? neighbour01.sourceAlbedoTile.albedoImage.image : visibleTile.sourceAlbedoTile.albedoImage.image);
-	gTileShader.setUniform('uAlbedoTexture10', neighbour10 != null && neighbour10.screenTile.valid && neighbour10.sourceAlbedoTile.albedoImage.loadingState == ETileLoadingState.loaded ? neighbour10.sourceAlbedoTile.albedoImage.image : visibleTile.sourceAlbedoTile.albedoImage.image);
-	gTileShader.setUniform('uAlbedoTexture11', neighbour11 != null && neighbour11.screenTile.valid && neighbour11.sourceAlbedoTile.albedoImage.loadingState == ETileLoadingState.loaded ? neighbour11.sourceAlbedoTile.albedoImage.image : visibleTile.sourceAlbedoTile.albedoImage.image);
+	gTileShader.setUniform('uAlbedoTexture01', n01 != null  && n01.albedoImage.loadingState == ETileLoadingState.loaded ? n01.albedoImage.image : visibleTile.sourceAlbedoTile.albedoImage.image);
+	gTileShader.setUniform('uAlbedoTexture10', n10 != null  && n10.albedoImage.loadingState == ETileLoadingState.loaded ? n10.albedoImage.image : visibleTile.sourceAlbedoTile.albedoImage.image);
+	gTileShader.setUniform('uAlbedoTexture11', n11 != null  && n11.albedoImage.loadingState == ETileLoadingState.loaded ? n11.albedoImage.image : visibleTile.sourceAlbedoTile.albedoImage.image);
 	gTileShader.setUniform('uElevationTexture00', visibleTile.sourceElevationTile.elevationImage.image);
-	gTileShader.setUniform('uElevationTexture01', neighbour01 != null && neighbour01.screenTile.valid && neighbour01.sourceElevationTile.elevationImage.loadingState == ETileLoadingState.loaded ? neighbour01.sourceElevationTile.elevationImage.image : visibleTile.sourceElevationTile.elevationImage.image);
-	gTileShader.setUniform('uElevationTexture10', neighbour10 != null && neighbour10.screenTile.valid && neighbour10.sourceElevationTile.elevationImage.loadingState == ETileLoadingState.loaded ? neighbour10.sourceElevationTile.elevationImage.image : visibleTile.sourceElevationTile.elevationImage.image);
-	gTileShader.setUniform('uElevationTexture11', neighbour11 != null && neighbour11.screenTile.valid && neighbour11.sourceElevationTile.elevationImage.loadingState == ETileLoadingState.loaded ? neighbour11.sourceElevationTile.elevationImage.image : visibleTile.sourceElevationTile.elevationImage.image);
+	gTileShader.setUniform('uElevationTexture01', n01 != null  && n01.elevationImage.loadingState == ETileLoadingState.loaded ? n01.elevationImage.image : visibleTile.sourceElevationTile.elevationImage.image);
+	gTileShader.setUniform('uElevationTexture10', n10 != null  && n10.elevationImage.loadingState == ETileLoadingState.loaded ? n10.elevationImage.image : visibleTile.sourceElevationTile.elevationImage.image);
+	gTileShader.setUniform('uElevationTexture11', n11 != null  && n11.elevationImage.loadingState == ETileLoadingState.loaded ? n11.elevationImage.image : visibleTile.sourceElevationTile.elevationImage.image);
 
 	gTileShader.setUniform('uUVTopLeft', [uvRect.min.x, uvRect.min.y]);
 	gTileShader.setUniform('uUVBottomRight', [uvRect.max.x, uvRect.max.y]);

@@ -27,9 +27,6 @@ void main()
 
     vUV = mix(uUVTopLeft, uUVBottomRight, aTexCoord);
 
-    // vAlbedoUV = uAlbedoTextureTopLeft + aTexCoord * uAlbedoTextureSize;
-    // vElevationUV = uElevationTextureTopLeft + aTexCoord * uElevationTextureSize;
-
     vPositionView = (uModelViewMatrix * positionVec4).xyz;
 
     vEyeGroundNormal = (uModelViewMatrix * vec4(0.0, 0.0, 1.0, 0.0)).xyz;

@@ -19,12 +19,22 @@ uniform sampler2D uElevationTexture01;
 uniform sampler2D uElevationTexture10;
 uniform sampler2D uElevationTexture11;
 
-
-
-uniform vec2 uAlbedoTextureTopLeft;
-uniform vec2 uAlbedoTextureSize;
-uniform vec2 uElevationTextureTopLeft;
-uniform vec2 uElevationTextureSize;
+uniform vec2 uAlbedoTexture00TopLeft;
+uniform vec2 uAlbedoTexture00Size;
+uniform vec2 uAlbedoTexture01TopLeft;
+uniform vec2 uAlbedoTexture01Size;
+uniform vec2 uAlbedoTexture10TopLeft;
+uniform vec2 uAlbedoTexture10Size;
+uniform vec2 uAlbedoTexture11TopLeft;
+uniform vec2 uAlbedoTexture11Size;
+uniform vec2 uElevationTexture00TopLeft;
+uniform vec2 uElevationTexture00Size;
+uniform vec2 uElevationTexture01TopLeft;
+uniform vec2 uElevationTexture01Size;
+uniform vec2 uElevationTexture10TopLeft;
+uniform vec2 uElevationTexture10Size;
+uniform vec2 uElevationTexture11TopLeft;
+uniform vec2 uElevationTexture11Size;
 
 
 float sampleElevation3x3(vec2 uv)
@@ -33,31 +43,31 @@ float sampleElevation3x3(vec2 uv)
     if (uv.y < 0.0)
     {
         if (uv.x < 0.0)
-            return texture2D(uElevationTexture11, uv + vec2(1.0,1.0)).r;            
+            return texture2D(uElevationTexture11, uElevationTexture11TopLeft + (uv + vec2(1.0,1.0))*uElevationTexture11Size).r;
         else if (uv.x >= 1.0)
-            return texture2D(uElevationTexture11, uv + vec2(-1.0,1.0)).r;
+            return texture2D(uElevationTexture11, uElevationTexture11TopLeft + (uv + vec2(-1.0,1.0))*uElevationTexture11Size).r;
         else 
-            return texture2D(uElevationTexture10, uv + vec2(0.0,1.0)).r;
+            return texture2D(uElevationTexture10, uElevationTexture10TopLeft + (uv + vec2(0.0,1.0))*uElevationTexture10Size).r;
     }
     // Bottom?
     else if (uv.y >= 1.0)
     {
         if (uv.x < 0.0)
-            return texture2D(uElevationTexture11, uv + vec2(1.0,-1.0)).r;            
+            return texture2D(uElevationTexture11, uElevationTexture11TopLeft + (uv + vec2(1.0,-1.0))*uElevationTexture11Size).r;
         else if (uv.x >= 1.0)
-            return texture2D(uElevationTexture11, uv + vec2(-1.0,-1.0)).r;
+            return texture2D(uElevationTexture11, uElevationTexture11TopLeft + (uv + vec2(-1.0,-1.0))*uElevationTexture11Size).r;
         else 
-            return texture2D(uElevationTexture10, uv + vec2(0.0,-1.0)).r;        
+            return texture2D(uElevationTexture10, uElevationTexture10TopLeft + (uv + vec2(0.0,-1.0))*uElevationTexture10Size).r;
     }    
     // Middle?
     else
     {
         if (uv.x < 0.0)
-            return texture2D(uElevationTexture01, uv + vec2(1.0,0.0)).r;            
+            return texture2D(uElevationTexture01, uElevationTexture01TopLeft + (uv + vec2(1.0,0.0))*uElevationTexture01Size).r;
         else if (uv.x >= 1.0)
-            return texture2D(uElevationTexture01, uv + vec2(-1.0,0.0)).r;
+            return texture2D(uElevationTexture01, uElevationTexture01TopLeft + (uv + vec2(-1.0,0.0))*uElevationTexture01Size).r;
         else 
-            return texture2D(uElevationTexture00, uv + vec2(0.0,0.0)).r;        
+            return texture2D(uElevationTexture00, uElevationTexture00TopLeft + (uv + vec2(0.0,0.0))*uElevationTexture00Size).r;
     }
 }
 
@@ -68,31 +78,31 @@ vec3 sampleAlbedo3x3(vec2 uv)
     if (uv.y < 0.0)
     {
         if (uv.x < 0.0)
-            return texture2D(uAlbedoTexture11, uv + vec2(1.0,1.0)).xyz;            
+            return texture2D(uAlbedoTexture11, uAlbedoTexture11TopLeft + (uv + vec2(1.0,1.0))*uAlbedoTexture11Size).xyz;            
         else if (uv.x >= 1.0)
-            return texture2D(uAlbedoTexture11, uv + vec2(-1.0,1.0)).xyz;
+            return texture2D(uAlbedoTexture11, uAlbedoTexture11TopLeft + (uv + vec2(-1.0,1.0))*uAlbedoTexture11Size).xyz;
         else 
-            return texture2D(uAlbedoTexture10, uv + vec2(0.0,1.0)).xyz;
+            return texture2D(uAlbedoTexture10, uAlbedoTexture10TopLeft + (uv + vec2(0.0,1.0))*uAlbedoTexture10Size).xyz;
     }
     // Bottom?
     else if (uv.y >= 1.0)
     {
         if (uv.x < 0.0)
-            return texture2D(uAlbedoTexture11, uv + vec2(1.0,-1.0)).xyz;            
+            return texture2D(uAlbedoTexture11, uAlbedoTexture11TopLeft + (uv + vec2(1.0,-1.0))*uAlbedoTexture11Size).xyz;            
         else if (uv.x >= 1.0)
-            return texture2D(uAlbedoTexture11, uv + vec2(-1.0,-1.0)).xyz;
+            return texture2D(uAlbedoTexture11, uAlbedoTexture11TopLeft + (uv + vec2(-1.0,-1.0))*uAlbedoTexture11Size).xyz;
         else 
-            return texture2D(uAlbedoTexture10, uv + vec2(0.0,-1.0)).xyz;        
+            return texture2D(uAlbedoTexture10, uAlbedoTexture10TopLeft + (uv + vec2(0.0,-1.0))*uAlbedoTexture10Size).xyz;        
     }    
     // Middle?
     else
     {
         if (uv.x < 0.0)
-            return texture2D(uAlbedoTexture01, uv + vec2(1.0,0.0)).xyz;            
+            return texture2D(uAlbedoTexture01, uAlbedoTexture01TopLeft + (uv + vec2(1.0,0.0))*uAlbedoTexture01Size).xyz;            
         else if (uv.x >= 1.0)
-            return texture2D(uAlbedoTexture01, uv + vec2(-1.0,0.0)).xyz;
+            return texture2D(uAlbedoTexture01, uAlbedoTexture01TopLeft + (uv + vec2(-1.0,0.0))*uAlbedoTexture01Size).xyz;
         else 
-            return texture2D(uAlbedoTexture00, uv + vec2(0.0,0.0)).xyz;        
+            return texture2D(uAlbedoTexture00, uAlbedoTexture00TopLeft + (uv + vec2(0.0,0.0))*uAlbedoTexture00Size).xyz;        
     }
 }
 

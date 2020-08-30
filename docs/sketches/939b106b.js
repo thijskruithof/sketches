@@ -332,6 +332,13 @@ class View
 		var newView = new View(this.screenRect);
 		newView.worldScale = this.worldScale;
 		newView.worldCenter = this.worldCenter.clone();
+		newView.cameraPos = this.cameraPos.clone();
+		newView.cameraPosZ = this.cameraPosZ;
+		newView.cameraTargetPos = this.cameraTargetPos.clone();
+		newView.cameraTargetPosZ = this.cameraTargetPosZ;
+		newView.cameraUp = this.cameraUp.clone();
+		newView.cameraUpZ = this.cameraUpZ;
+		newView.viewProjMatrix = this.viewProjMatrix;
 		return newView;
 	}
 
@@ -351,12 +358,19 @@ class View
 
 	worldToScreenPos(pos)
 	{	
-		return pos.clone().subtract(this.worldCenter).divide(new Victor(this.worldScale, this.worldScale)).add(this.screenRect.center);
-	}
+		var M = this.viewProjMatrix;
 
-	worldToScreenScale(scale)
-	{
-		return scale / this.worldScale;
+		var w = M[3] * pos.x + M[7] * pos.y + M[11] * pos.z + M[15];
+
+		var ndcPos = new Victor(
+			(M[0] * pos.x + M[4] * pos.y + M[8] * pos.z + M[12]) / w,
+			(M[1] * pos.x + M[5] * pos.y + M[9] * pos.z + M[13]) / w,
+		)
+
+		return new Victor(
+			(0.5 + ndcPos.x * 0.5) * gRenderWidth,
+			(0.5 - ndcPos.y * 0.5) * gRenderHeight
+		);
 	}
 
 	worldToScreenRect(rect)
@@ -366,18 +380,31 @@ class View
 
 	screenToWorldPos(pos)
 	{
-		// [sx, sy, ?, ?] * VP = [?, ?, pz, 1]
+		var ndcPos = new Victor( 
+			2.0*(pos.x / gRenderWidth) - 1.0,		// -1..+1
+			-2.0*(pos.y / gRenderHeight) + 1.0		// +1..-1
+		);
 
+		// Manually solved inverse transformation:
+
+		// If ndcPos = M * v  (M = MVP matrix and v is position in world space)
+		// Then:
+		// v = M^-1 * ndcPos
 		//
+		// Because we know that v.z = 0 we can directly solve this transformation.	
 
-		// TODO: Calculate inverse?
+		var M = this.viewProjMatrix;
 
-		//return pos.clone().subtract(this.screenRect.center).multiply(new Victor(this.worldScale, this.worldScale)).add(this.worldCenter);
-	}
+		var dk = ndcPos.x*M[3] - M[0];
+		var k0 = (M[4] - ndcPos.x*M[7]) / dk;
+		var k1 = (M[8] - ndcPos.x*M[15]) / dk;
 
-	screenToWorldScale(scale)
-	{
-		return scale * this.worldScale;
+		var div = k0*(ndcPos.y*M[3] - M[0]) + ndcPos.y*M[7] - M[5];
+
+		var y = (M[13] - (ndcPos.y - M[9])*M[11] - k1*(ndcPos.y*M[3] - M[1])) / div;
+		var x = k0*y + k1;
+
+		return new Victor(x, y, 0.0);
 	}
 
 	screenToWorldRect(rect)
@@ -427,12 +454,12 @@ class View
 	updateCamera()
 	{
 		// Calculate Z of the camera 
-		var cameraZ = (0.5*gView.screenRect.size.y*gView.worldScale) / Math.tan(0.5*this.FOVy);
+		var cameraZ = (0.5*this.screenRect.size.y*this.worldScale) / Math.tan(0.5*this.FOVy);
 
 		// Rotate camera in 2D (ZY space) around bottom of world
-		var cameraPosZY = new Victor(cameraZ, gView.worldCenter.y);
+		var cameraPosZY = new Victor(cameraZ, this.worldCenter.y);
 		var cameraFwdZY = new Victor(-1.0, 0.0);
-		var planeBottomCenterPosZY = new Victor(0.0, gView.worldCenter.y + gView.worldRect.size.y/2.0);
+		var planeBottomCenterPosZY = new Victor(0.0, this.worldCenter.y + this.worldScale*this.screenRect.size.y/2.0);
 		var pitchAngle = gDebugSettings.cameraPitchAngle;
 		var cameraOffsetZY = cameraPosZY.clone().subtract(planeBottomCenterPosZY).rotate(pitchAngle);
 		cameraFwdZY.rotate(pitchAngle);
@@ -441,14 +468,14 @@ class View
 		cameraPosZY = planeBottomCenterPosZY.clone().add(cameraOffsetZY);
 
 		// Store camera position
-		this.cameraPos = new Victor(gView.worldCenter.x, cameraPosZY.y);
+		this.cameraPos = new Victor(this.worldCenter.x, cameraPosZY.y);
 		this.cameraPosZ = cameraPosZY.x;
 
 		// Calculate position that we're looking at
 		var targetPosZY = cameraPosZY.clone().add(cameraFwdZY);
 	
 		// Store target position
-		this.cameraTargetPos = new Victor(gView.worldCenter.x, targetPosZY.y);
+		this.cameraTargetPos = new Victor(this.worldCenter.x, targetPosZY.y);
 		this.cameraTargetPosZ = targetPosZY.x;
 		
 		// Store up axis of the camera
@@ -463,6 +490,10 @@ class View
 
 		// Calculate view * proj
 		this.viewProjMatrix = this._multMatrix(viewMatrix, projMatrix);
+
+		var test0 = this.screenToWorldPos(new Victor(0, 0));
+		var test1 = this.screenToWorldPos(new Victor(gRenderWidth/2, gRenderHeight/2));
+		var test2 = this.screenToWorldPos(new Victor(gRenderWidth/2 + 10.0, gRenderHeight/2));
 
 		this.frustum = new Frustum2D(this.viewProjMatrix);
 	}

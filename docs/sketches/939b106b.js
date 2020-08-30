@@ -402,6 +402,178 @@ class View
 			Math.max(minWorldCenter.y, Math.min(maxWorldCenter.y, this.worldCenter.y)),
 		);
 	}
+
+	get FOVy()
+	{
+		return (Math.PI/180.0)*60.0;
+	}
+
+	get near()
+	{
+		return 0.01;
+	}
+
+	get far()
+	{
+		return 100.0;
+	}
+
+	get aspect()
+	{
+		return gRenderWidth / gRenderHeight;
+	}
+
+	updateCamera()
+	{
+		// Calculate Z of the camera 
+		var cameraZ = (0.5*gView.screenRect.size.y*gView.worldScale) / Math.tan(0.5*this.FOVy);
+
+		// Rotate camera in 2D (ZY space) around bottom of world
+		var cameraPosZY = new Victor(cameraZ, gView.worldCenter.y);
+		var cameraFwdZY = new Victor(-1.0, 0.0);
+		var planeBottomCenterPosZY = new Victor(0.0, gView.worldCenter.y + gView.worldRect.size.y/2.0);
+		var pitchAngle = gDebugSettings.cameraPitchAngle;
+		var cameraOffsetZY = cameraPosZY.clone().subtract(planeBottomCenterPosZY).rotate(pitchAngle);
+		cameraFwdZY.rotate(pitchAngle);
+	
+		// Calculate new camera position
+		cameraPosZY = planeBottomCenterPosZY.clone().add(cameraOffsetZY);
+
+		// Store camera position
+		this.cameraPos = new Victor(gView.worldCenter.x, cameraPosZY.y);
+		this.cameraPosZ = cameraPosZY.x;
+
+		// Calculate position that we're looking at
+		var targetPosZY = cameraPosZY.clone().add(cameraFwdZY);
+	
+		// Store target position
+		this.cameraTargetPos = new Victor(gView.worldCenter.x, targetPosZY.y);
+		this.cameraTargetPosZ = targetPosZY.x;
+		
+		// Store up axis of the camera
+		this.cameraUp = new Victor(0.0, -cameraFwdZY.x);
+		this.cameraUpZ = cameraFwdZY.y;
+
+		// Calculate projection matrix		
+		var projMatrix = this._getProjectionMatrix();
+
+		// Calculate view matrix
+		var viewMatrix = this._getViewMatrix();
+
+		// Calculate view * proj
+		var vp = this._multMatrix(viewMatrix, projMatrix);
+
+		this.frustum = new Frustum2D(vp);
+	}
+
+	/**
+	 * Get our projection matrix
+	 * Based on p5js's implementation of perspective
+	 */
+	_getProjectionMatrix()
+	{
+		// Calculate projection matrix		
+		var f = 1.0 / Math.tan(this.FOVy / 2);
+		var nf = 1.0 / (this.near - this.far);
+
+		return [
+			f / this.aspect, 0, 0, 0,
+				0, -f, 0, 0,
+				0, 0, (this.far + this.near) * nf, -1,
+				0, 0, 2 * this.far * this.near * nf, 0
+		];	
+	}
+
+	/**
+	 * Get our view matrix 
+	 * Based on p5js's implementation of camera and Camera._getLocalAxes
+	 */
+	_getViewMatrix()
+	{
+		// calculate camera local Z vector
+		var z0 = this.cameraPos.x - this.cameraTargetPos.x;
+		var z1 = this.cameraPos.y - this.cameraTargetPos.y;
+		var z2 = this.cameraPosZ - this.cameraTargetPosZ;
+
+		// normalize camera local Z vector
+		var eyeDist = Math.sqrt(z0 * z0 + z1 * z1 + z2 * z2);
+		if (eyeDist !== 0) 
+		{
+			z0 /= eyeDist;
+			z1 /= eyeDist;
+			z2 /= eyeDist;
+		}
+
+		// calculate camera Y vector
+		var y0 = this.cameraUp.x;
+		var y1 = this.cameraUp.y;
+		var y2 = this.cameraUpZ;
+
+		// compute camera local X vector as up vector (local Y) cross local Z
+		var x0 = y1 * z2 - y2 * z1;
+		var x1 = -y0 * z2 + y2 * z0;
+		var x2 = y0 * z1 - y1 * z0;
+
+		// recompute y = z cross x
+		y0 = z1 * x2 - z2 * x1;
+		y1 = -z0 * x2 + z2 * x0;
+		y2 = z0 * x1 - z1 * x0;
+
+		// cross product gives area of parallelogram, which is < 1.0 for
+		// non-perpendicular unit-length vectors; so normalize x, y here:
+		var xmag = Math.sqrt(x0 * x0 + x1 * x1 + x2 * x2);
+		if (xmag !== 0) 
+		{
+			x0 /= xmag;
+			x1 /= xmag;
+			x2 /= xmag;
+		}
+
+		var ymag = Math.sqrt(y0 * y0 + y1 * y1 + y2 * y2);
+		if (ymag !== 0) 
+		{
+			y0 /= ymag;
+			y1 /= ymag;
+			y2 /= ymag;
+		}
+
+		var localAxes = {
+			x: [x0, x1, x2],
+			y: [y0, y1, y2],
+			z: [z0, z1, z2]
+		};
+
+		// Calculate orientation matrix
+		var mat4 = [
+			localAxes.x[0], localAxes.y[0], localAxes.z[0], 0,
+			localAxes.x[1], localAxes.y[1], localAxes.z[1], 0,
+			localAxes.x[2], localAxes.y[2], localAxes.z[2], 0,
+			0, 0, 0, 1
+		];
+
+		// Add inverse camera position
+		var tx = -this.cameraPos.x;
+		var ty = -this.cameraPos.y;
+		var tz = -this.cameraPosZ;
+
+		mat4[12] += mat4[0] * tx + mat4[4] * ty + mat4[8] * tz;
+		mat4[13] += mat4[1] * tx + mat4[5] * ty + mat4[9] * tz;
+		mat4[14] += mat4[2] * tx + mat4[6] * ty + mat4[10] * tz;
+		mat4[15] += mat4[3] * tx + mat4[7] * ty + mat4[11] * tz;
+
+		return mat4;
+	}
+
+	_multMatrix(matA, matB)
+	{
+		var result = [];
+
+		for (var i=0; i<16; i+=4)
+			for (var j=0; j<4; ++j)
+				result.push( matA[i] * matB[j] + matA[i+1] * matB[j+4] + matA[i+2] * matB[j+8]  + matA[i+3] * matB[j+12] );
+
+		return result;
+	}
 }
 
 
@@ -573,7 +745,6 @@ var gZoomInitialMouseView;
 var gTilesOffscreenGraphics;
 var gTileShader;
 var gMapShader;
-const gFOVy = (Math.PI/180.0)*60.0;
 
 // Streaming state
 var gNumTileImagesBeingLoaded = 0;
@@ -824,15 +995,6 @@ function calcDesiredLod()
 }
 
 
-
-function getVisibleTiles(desiredLod, frustum)
-{
-	var desiredTileGrid = gTileGrids[desiredLod];
-	return desiredTileGrid.getTilesInFrustum(frustum);
-}
-
-
-
 function getTileAlbedoImageAndTileRect(tile)
 {
 	// Start with the full size image rect
@@ -897,10 +1059,10 @@ function setTileUniforms(suffix, tile)
 
 
 
-function drawTileQuad(tile, cameraWorldPos, worldRect, uvRect)
+function drawTileQuad(tile, worldRect, uvRect)
 {
-	var right = worldRect.min.x >= cameraWorldPos.x;
-	var top = worldRect.min.y < cameraWorldPos.y;
+	var right = worldRect.min.x >= gView.cameraPos.x;
+	var top = worldRect.min.y < gView.cameraPos.y;
 
 	var neighbour01 = right ? 5 : 3; 
 	var neighbour10 = top ? 1 : 7; 
@@ -971,45 +1133,25 @@ function draw()
 	}
 
 	gView.applyViewLimits();	
+	gView.updateCamera();
 
 	clear();
 	noStroke();
 	shader(gTileShader);
 
 	push();
-	perspective(gFOVy, gRenderWidth/gRenderHeight, 0.01, 100.0);
-
-	var cameraZ = (0.5*gView.screenRect.size.y*gView.worldScale) / Math.tan(0.5*gFOVy);
-
-	// Rotate camera in 2D (ZY space) around bottom of world
-	var cameraPos = new Victor(cameraZ, gView.worldCenter.y);
-	var cameraFwd = new Victor(-1.0, 0.0);
-	var planeBottomCenterPos = new Victor(0.0, gView.worldCenter.y + gView.worldRect.size.y/2.0);
-	var pitchAngle = gDebugSettings.cameraPitchAngle;
-	var cameraOffset = cameraPos.clone().subtract(planeBottomCenterPos).rotate(pitchAngle);
-	cameraFwd.rotate(pitchAngle);
-
-	cameraPos = planeBottomCenterPos.clone().add(cameraOffset);
-	var targetPos = cameraPos.clone().add(cameraFwd);
-
+	perspective(gView.FOVy, gView.aspect, gView.near, gView.far);
 	camera(
-		gView.worldCenter.x, cameraPos.y, cameraPos.x,
-		gView.worldCenter.x, targetPos.y, targetPos.x,
-		0,-cameraFwd.x,cameraFwd.y);
-
-	var cam = this._renderer._curCamera;
-	var mvp = cam.cameraMatrix.copy().mult(cam.projMatrix);
-	var frustum = new Frustum2D(mvp.mat4);
+		gView.cameraPos.x, gView.cameraPos.y, gView.cameraPosZ,
+		gView.cameraTargetPos.x, gView.cameraTargetPos.y, gView.cameraTargetPosZ,
+		gView.cameraUp.x, gView.cameraUp.y, gView.cameraUpZ);
 
 	visitTileChildren(gRootTile, tile => {tile.isVisible = false;});
 
 	var desiredLod = calcDesiredLod();
 
 	// Determine which tiles are in our frustum
-	var visibleTiles = gTileGrids[desiredLod].getTilesInFrustum(frustum);
-
-	// Calculate the position in the world that we're actually looking at
-	var cameraWorldPos = new Victor(gView.worldCenter.x, cameraPos.y);
+	var visibleTiles = gTileGrids[desiredLod].getTilesInFrustum(gView.frustum);
 
 	// Render all tiles within the quadrant
 	for (var i=0; i<visibleTiles.length; ++i)
@@ -1033,9 +1175,9 @@ function draw()
 		];
 
 		// Split our quad horizontally?
-		if (screenTileInfo[0].worldRect.min.x < cameraWorldPos.x && screenTileInfo[0].worldRect.max.x > cameraWorldPos.x)
+		if (screenTileInfo[0].worldRect.min.x < gView.cameraPos.x && screenTileInfo[0].worldRect.max.x > gView.cameraPos.x)
 		{
-			var splitFraction = screenTileInfo[0].worldRect.getFractionX(cameraWorldPos.x);
+			var splitFraction = screenTileInfo[0].worldRect.getFractionX(gView.cameraPos.x);
 			var rightTileInfo = {
 				worldRect: screenTileInfo[0].worldRect.splitXAtFraction(splitFraction),
 				uvRect: screenTileInfo[0].uvRect.splitXAtFraction(splitFraction)
@@ -1047,9 +1189,9 @@ function draw()
 		var numScreenTiles = screenTileInfo.length;
 		for (var j=0; j<numScreenTiles; ++j)
 		{
-			if (screenTileInfo[j].worldRect.min.y < cameraWorldPos.y && screenTileInfo[j].worldRect.max.y > cameraWorldPos.y)
+			if (screenTileInfo[j].worldRect.min.y < gView.cameraPos.y && screenTileInfo[j].worldRect.max.y > gView.cameraPos.y)
 			{
-				var splitFraction = screenTileInfo[j].worldRect.getFractionY(cameraWorldPos.y);
+				var splitFraction = screenTileInfo[j].worldRect.getFractionY(gView.cameraPos.y);
 				var bottomTileInfo = {
 					worldRect: screenTileInfo[j].worldRect.splitYAtFraction(splitFraction),
 					uvRect: screenTileInfo[j].uvRect.splitYAtFraction(splitFraction)
@@ -1059,7 +1201,7 @@ function draw()
 		}
 		
 		for (var j=0; j<screenTileInfo.length; ++j)
-			drawTileQuad(visibleTile, cameraWorldPos, screenTileInfo[j].worldRect, screenTileInfo[j].uvRect);
+			drawTileQuad(visibleTile, screenTileInfo[j].worldRect, screenTileInfo[j].uvRect);
 	}
 
 	pop();
@@ -1076,7 +1218,7 @@ function draw()
 	gDebugInfo.numTilesLoaded = numTilesLoaded;
 	gDebugInfo.numTilesLoading = gNumTileImagesBeingLoaded;
 
-	drawUI(frustum);
+	drawUI();
 
 	postDraw();
 }
@@ -1090,13 +1232,13 @@ function getMousePos()
 
 var drawUImouseWasPressed = false;
 
-function drawUI(frustum)
+function drawUI()
 {
 	resetShader();
 
 	// Draw mini map
 	if (gDebugSettings.showTileMiniMap)
-	 	drawTileMiniMap(frustum);
+	 	drawTileMiniMap();
 
 	// Draw toggle button
 	var buttonPos = new Victor(gRenderWidth - 30, 86);
@@ -1119,7 +1261,7 @@ function drawUI(frustum)
 	drawUImouseWasPressed = mouseIsPressed;
 }
 
-function drawTileMiniMap(frustum)
+function drawTileMiniMap()
 {
 	const tileScreenSize = 6;
 	const size = gRootTile.worldRect.size;
@@ -1157,16 +1299,13 @@ function drawTileMiniMap(frustum)
 	});
 
 	// Draw frustum
-	var viewWorldRect = gView.worldRect;
-	var viewRectTL = viewWorldRect.min.clone().multiply(tileScale);
-	var viewSize = viewWorldRect.size.clone().multiply(tileScale);
 	noFill();
 	stroke(0,0,0, 192);
 	quad(
-		frustum.posTopLeft.x * tileScreenSize, frustum.posTopLeft.y * tileScreenSize,
-		frustum.posTopRight.x * tileScreenSize, frustum.posTopRight.y * tileScreenSize,
-		frustum.posBottomRight.x * tileScreenSize, frustum.posBottomRight.y * tileScreenSize,
-		frustum.posBottomLeft.x * tileScreenSize, frustum.posBottomLeft.y * tileScreenSize);
+		gView.frustum.posTopLeft.x * tileScreenSize, gView.frustum.posTopLeft.y * tileScreenSize,
+		gView.frustum.posTopRight.x * tileScreenSize, gView.frustum.posTopRight.y * tileScreenSize,
+		gView.frustum.posBottomRight.x * tileScreenSize, gView.frustum.posBottomRight.y * tileScreenSize,
+		gView.frustum.posBottomLeft.x * tileScreenSize, gView.frustum.posBottomLeft.y * tileScreenSize);
 
 	pop();
 }

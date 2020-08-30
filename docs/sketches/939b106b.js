@@ -366,7 +366,13 @@ class View
 
 	screenToWorldPos(pos)
 	{
-		return pos.clone().subtract(this.screenRect.center).multiply(new Victor(this.worldScale, this.worldScale)).add(this.worldCenter);
+		// [sx, sy, ?, ?] * VP = [?, ?, pz, 1]
+
+		//
+
+		// TODO: Calculate inverse?
+
+		//return pos.clone().subtract(this.screenRect.center).multiply(new Victor(this.worldScale, this.worldScale)).add(this.worldCenter);
 	}
 
 	screenToWorldScale(scale)
@@ -377,11 +383,6 @@ class View
 	screenToWorldRect(rect)
 	{
 		return new Rect(this.screenToWorldPos(rect.min), this.screenToWorldPos(rect.max));
-	}
-
-	get worldRect()
-	{
-		return this.screenToWorldRect(this.screenRect);
 	}
 
 	applyViewLimits()
@@ -461,9 +462,9 @@ class View
 		var viewMatrix = this._getViewMatrix();
 
 		// Calculate view * proj
-		var vp = this._multMatrix(viewMatrix, projMatrix);
+		this.viewProjMatrix = this._multMatrix(viewMatrix, projMatrix);
 
-		this.frustum = new Frustum2D(vp);
+		this.frustum = new Frustum2D(this.viewProjMatrix);
 	}
 
 	/**
@@ -478,9 +479,9 @@ class View
 
 		return [
 			f / this.aspect, 0, 0, 0,
-				0, -f, 0, 0,
-				0, 0, (this.far + this.near) * nf, -1,
-				0, 0, 2 * this.far * this.near * nf, 0
+			0, -f, 0, 0,
+			0, 0, (this.far + this.near) * nf, -1,
+			0, 0, 2 * this.far * this.near * nf, 0
 		];	
 	}
 
@@ -983,12 +984,12 @@ function calcDesiredLod()
 {
 	var cTileImageSize = gMap.tileSize;
 
-	var worldScreenSize = gView.worldRect.size;
+	var bottomViewWorldWidth = gView.screenToWorldPos(gView.screenRect.max).x - gView.screenToWorldPos(gView.screenRect.min).x;
 
-	var numTilePixelsOnScreen = worldScreenSize.clone().multiply(new Victor(cTileImageSize, cTileImageSize));
-	var numTilePixelsPerPixel = numTilePixelsOnScreen.clone().divide(new Victor(gRenderWidth, gRenderHeight));
+	var numTilePixelsOnScreen = bottomViewWorldWidth * cTileImageSize;
+	var numTilePixelsPerScreenPixel = numTilePixelsOnScreen / gRenderWidth;
 
-	var lod = Math.max(1.0, Math.min(numTilePixelsPerPixel.x, numTilePixelsPerPixel.y));
+	var lod = Math.max(1.0, numTilePixelsPerScreenPixel);
 	lod = Math.min(gMap.numLods-1, Math.round(Math.log2(lod)));
 
 	return lod;

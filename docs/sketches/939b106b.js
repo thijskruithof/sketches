@@ -804,8 +804,7 @@ function setup()
 
 	var folderRender = gTweakPane.addFolder({ title: 'Rendering' });
 	folderRender.addInput(gDebugSettings, 'reliefDepth', {label: "Relief depth", min:0, max:0.50});	
-	folderRender.addInput(gDebugSettings, 'cameraPitchAngle', {label: "Camera angle", min:0.0, max:5.0});	
-	
+	folderRender.addInput(gDebugSettings, 'cameraPitchAngle', {label: "Camera angle", min:0.0, max:0.95});		
 }
 
 
@@ -976,9 +975,11 @@ function draw()
 	clear();
 	noStroke();
 	shader(gTileShader);
+
+	push();
 	perspective(gFOVy, gRenderWidth/gRenderHeight, 0.01, 100.0);
 
-	cameraZ = (0.5*gView.screenRect.size.y*gView.worldScale) / Math.tan(0.5*gFOVy);
+	var cameraZ = (0.5*gView.screenRect.size.y*gView.worldScale) / Math.tan(0.5*gFOVy);
 
 	// Rotate camera in 2D (ZY space) around bottom of world
 	var cameraPos = new Victor(cameraZ, gView.worldCenter.y);
@@ -1061,6 +1062,8 @@ function draw()
 			drawTileQuad(visibleTile, cameraWorldPos, screenTileInfo[j].worldRect, screenTileInfo[j].uvRect);
 	}
 
+	pop();
+
 	updateTileLoading();	
 	updateTileUnloading();
 
@@ -1073,7 +1076,7 @@ function draw()
 	gDebugInfo.numTilesLoaded = numTilesLoaded;
 	gDebugInfo.numTilesLoading = gNumTileImagesBeingLoaded;
 
-	drawUI();
+	drawUI(frustum);
 
 	postDraw();
 }
@@ -1087,11 +1090,13 @@ function getMousePos()
 
 var drawUImouseWasPressed = false;
 
-function drawUI()
+function drawUI(frustum)
 {
+	resetShader();
+
 	// Draw mini map
-	// if (gDebugSettings.showTileMiniMap)
-	// 	drawTileMiniMap();
+	if (gDebugSettings.showTileMiniMap)
+	 	drawTileMiniMap(frustum);
 
 	// Draw toggle button
 	var buttonPos = new Victor(gRenderWidth - 30, 86);
@@ -1101,9 +1106,6 @@ function drawUI()
 	var desiredAngle = gTweakPane.hidden ? 0 : PI;
 	gOptionsButtonAngle = gOptionsButtonAngle + (desiredAngle - gOptionsButtonAngle)*0.2;
 
-	var worldButtonPos = gView.screenToWorldPos(buttonPos);
-	var worldButtonSize = gView.screenToWorldScale(buttonSize);
-	resetShader();
 	push();
 	translate(0.5*buttonPos.x - buttonSize*0.5,0.5*(-gRenderHeight+buttonPos.y)+buttonSize*1.5,0.0);
 	rotateZ(gOptionsButtonAngle);
@@ -1117,7 +1119,7 @@ function drawUI()
 	drawUImouseWasPressed = mouseIsPressed;
 }
 
-function drawTileMiniMap()
+function drawTileMiniMap(frustum)
 {
 	const tileScreenSize = 6;
 	const size = gRootTile.worldRect.size;
@@ -1128,14 +1130,11 @@ function drawTileMiniMap()
 
 	var tileScale = new Victor(tileScreenSize, tileScreenSize);
 
-	// Back
-	// strokeWeight(1.0);
-	// stroke(255,255,255, 255);
-	// //fill(0,0,0, 255);
-	// rect(topLeft.x-1, topLeft.y-1, w+2, h+2);
-
 	// Draw tiles
+	push();
 	noStroke();
+
+	translate(topLeft.x - gRenderWidth/2,topLeft.y - gRenderHeight/2);
 
 	visitTileChildren(gRootTile, tile => {
 		if (!tile.valid)
@@ -1146,23 +1145,30 @@ function drawTileMiniMap()
 		var intensity = 255 - 255*tile.lod/gMap.numLods;
 
 		if (tile.albedoImage.loadingState == ETileLoadingState.loading)
-			fill(intensity, 0, 0, 255);
+			emissiveMaterial(intensity, 0, 0);
 		else
-			fill(0, intensity, 0, 255);
+			emissiveMaterial(0, intensity, 0);
 
-		var tl = topLeft.clone().add(tile.worldRect.min.clone().multiply(tileScale));
+		var center = tile.worldRect.center.clone().multiply(tileScale);
 		var size = tile.worldRect.size.clone().multiply(tileScale);
-
-		rect(tl.x, tl.y, size.x, size.y);
+		translate(center.x, center.y, 0.0);
+		plane(size.x, size.y);
+		translate(-center.x, -center.y, 0.0);
 	});
 
-	// Draw screen
+	// Draw frustum
 	var viewWorldRect = gView.worldRect;
-	var viewRectTL = topLeft.clone().add(viewWorldRect.min.clone().multiply(tileScale));
+	var viewRectTL = viewWorldRect.min.clone().multiply(tileScale);
 	var viewSize = viewWorldRect.size.clone().multiply(tileScale);
 	noFill();
 	stroke(0,0,0, 192);
-	rect(viewRectTL.x, viewRectTL.y, viewSize.x, viewSize.y);
+	quad(
+		frustum.posTopLeft.x * tileScreenSize, frustum.posTopLeft.y * tileScreenSize,
+		frustum.posTopRight.x * tileScreenSize, frustum.posTopRight.y * tileScreenSize,
+		frustum.posBottomRight.x * tileScreenSize, frustum.posBottomRight.y * tileScreenSize,
+		frustum.posBottomLeft.x * tileScreenSize, frustum.posBottomLeft.y * tileScreenSize);
+
+	pop();
 }
 
 function mousePressed()

@@ -360,11 +360,13 @@ class View
 	{	
 		var M = this.viewProjMatrix;
 
-		var w = M[3] * pos.x + M[7] * pos.y + M[11] * pos.z + M[15];
+		// Simple multiplication of (pos.x, pos.y, 0.0) with M,
+		// including projection by dividing by w.
+		var w = M[3] * pos.x + M[7] * pos.y + M[15];
 
 		var ndcPos = new Victor(
-			(M[0] * pos.x + M[4] * pos.y + M[8] * pos.z + M[12]) / w,
-			(M[1] * pos.x + M[5] * pos.y + M[9] * pos.z + M[13]) / w,
+			(M[0] * pos.x + M[4] * pos.y + M[12]) / w,
+			(M[1] * pos.x + M[5] * pos.y + M[13]) / w,
 		)
 
 		return new Victor(
@@ -372,6 +374,7 @@ class View
 			(0.5 - ndcPos.y * 0.5) * this.screenRect.size.y
 		);
 	}
+
 
 	worldToScreenRect(rect)
 	{
@@ -405,15 +408,6 @@ class View
 
 		var y = (n0*k1 + n1) / (1.0 - n0*k0);
 		var x = k0*y + k1;
-
-		// var dk = ndcPos.x*M[3] - M[0];
-		// var k0 = (M[4] - ndcPos.x*M[7]) / dk;
-		// var k1 = (M[8] - ndcPos.x*M[15]) / dk;
-
-		// var div = k0*(ndcPos.y*M[3] - M[0]) + ndcPos.y*M[7] - M[5];
-
-		// var y = (M[13] - (ndcPos.y - M[9])*M[11] - k1*(ndcPos.y*M[3] - M[1])) / div;
-		// var x = k0*y + k1;
 
 		return new Victor(x, y, 0.0);
 	}
@@ -941,11 +935,6 @@ function selectMap(map)
 	// Reset our view
 	gView.fitToContent(new Rect(new Victor(8,8), new Victor(9,9)));
 	gView.updateCamera();
-
-	// test:
-	var ps = new Victor(200.0, 250.0);
-	var pw = gView.screenToWorldPos(ps);
-	var ps2 = gView.worldToScreenPos(pw);
 
 	// Create our empty grids
 	gTileGrids = [];

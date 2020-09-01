@@ -368,8 +368,8 @@ class View
 		)
 
 		return new Victor(
-			(0.5 + ndcPos.x * 0.5) * gRenderWidth,
-			(0.5 - ndcPos.y * 0.5) * gRenderHeight
+			(0.5 + ndcPos.x * 0.5) * this.screenRect.size.x,
+			(0.5 - ndcPos.y * 0.5) * this.screenRect.size.y
 		);
 	}
 
@@ -381,8 +381,8 @@ class View
 	screenToWorldPos(pos)
 	{
 		var ndcPos = new Victor( 
-			2.0*(pos.x / gRenderWidth) - 1.0,		// -1..+1
-			-2.0*(pos.y / gRenderHeight) + 1.0		// +1..-1
+			2.0*(pos.x / this.screenRect.size.x) - 1.0,		// -1..+1
+			-2.0*(pos.y / this.screenRect.size.y) + 1.0		// +1..-1
 		);
 
 		// Manually solved inverse transformation:
@@ -448,7 +448,7 @@ class View
 
 	get aspect()
 	{
-		return gRenderWidth / gRenderHeight;
+		return this.screenRect.size.x / this.screenRect.size.y;
 	}
 
 	updateCamera()
@@ -490,10 +490,6 @@ class View
 
 		// Calculate view * proj
 		this.viewProjMatrix = this._multMatrix(viewMatrix, projMatrix);
-
-		var test0 = this.screenToWorldPos(new Victor(0, 0));
-		var test1 = this.screenToWorldPos(new Victor(gRenderWidth/2, gRenderHeight/2));
-		var test2 = this.screenToWorldPos(new Victor(gRenderWidth/2 + 10.0, gRenderHeight/2));
 
 		this.frustum = new Frustum2D(this.viewProjMatrix);
 	}
@@ -933,6 +929,12 @@ function selectMap(map)
 
 	// Reset our view
 	gView.fitToContent(new Rect(new Victor(8,8), new Victor(9,9)));
+	gView.updateCamera();
+
+	// test:
+	var ps = new Victor(800.0, 450.0);
+	var pw = gView.screenToWorldPos(ps);
+	var ps2 = gView.worldToScreenPos(pw);
 
 	// Create our empty grids
 	gTileGrids = [];

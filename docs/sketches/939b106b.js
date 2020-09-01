@@ -397,12 +397,23 @@ class View
 
 		var dk = ndcPos.x*M[3] - M[0];
 		var k0 = (M[4] - ndcPos.x*M[7]) / dk;
-		var k1 = (M[8] - ndcPos.x*M[15]) / dk;
+		var k1 = (M[12] - ndcPos.x*M[15]) / dk;
 
-		var div = k0*(ndcPos.y*M[3] - M[0]) + ndcPos.y*M[7] - M[5];
+		var ndiv = ndcPos.y*M[7] - M[5];
+		var n0 = (M[1] - ndcPos.y*M[3]) / ndiv;
+		var n1 = (M[13] - ndcPos.y*M[15]) / ndiv;
 
-		var y = (M[13] - (ndcPos.y - M[9])*M[11] - k1*(ndcPos.y*M[3] - M[1])) / div;
+		var y = (n0*k1 + n1) / (1.0 - n0*k0);
 		var x = k0*y + k1;
+
+		// var dk = ndcPos.x*M[3] - M[0];
+		// var k0 = (M[4] - ndcPos.x*M[7]) / dk;
+		// var k1 = (M[8] - ndcPos.x*M[15]) / dk;
+
+		// var div = k0*(ndcPos.y*M[3] - M[0]) + ndcPos.y*M[7] - M[5];
+
+		// var y = (M[13] - (ndcPos.y - M[9])*M[11] - k1*(ndcPos.y*M[3] - M[1])) / div;
+		// var x = k0*y + k1;
 
 		return new Victor(x, y, 0.0);
 	}
@@ -932,7 +943,7 @@ function selectMap(map)
 	gView.updateCamera();
 
 	// test:
-	var ps = new Victor(800.0, 450.0);
+	var ps = new Victor(200.0, 250.0);
 	var pw = gView.screenToWorldPos(ps);
 	var ps2 = gView.worldToScreenPos(pw);
 

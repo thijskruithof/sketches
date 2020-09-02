@@ -323,15 +323,15 @@ class View
 		this.screenRect = screenRect.clone();
 
 		// World dimensions
-		this.worldCenter = new Victor(0, 0);	//< Which position (in world coords) is shown in the center of the screen
-		this.worldScale = 1.0; 					//< Size in world units of 1 pixel on screen
+		this.worldBottomCenter = new Victor(0, 0);	//< Which position (in world coords) is shown in the center at the bottom of the screen
+		this.worldScale = 1.0; 						//< Size in world units of 1 pixel on screen (at the bottom of the screen)
 	}
 
 	clone()
 	{
 		var newView = new View(this.screenRect);
 		newView.worldScale = this.worldScale;
-		newView.worldCenter = this.worldCenter.clone();
+		newView.worldBottomCenter = this.worldBottomCenter.clone();
 		newView.cameraPos = this.cameraPos.clone();
 		newView.cameraPosZ = this.cameraPosZ;
 		newView.cameraTargetPos = this.cameraTargetPos.clone();
@@ -351,7 +351,7 @@ class View
 		this.worldScale = Math.max(scale.x, scale.y);
 		
 		// Center
-		this.worldCenter = worldRect.center;
+		this.worldBottomCenter = new Victor((worldRect.min.x + worldRect.max.x)*0.5, worldRect.max.y);
 
 		this.applyViewLimits();
 	}
@@ -419,21 +419,22 @@ class View
 
 	applyViewLimits()
 	{
+		
 		// Limit scale
 		var minScale = 1.0/gMap.tileSize;
 		var maxScale = Math.min(gMap.numTilesXLod0 / this.screenRect.size.x, gMap.numTilesYLod0 / this.screenRect.size.y);
 		this.worldScale = Math.min(Math.max(this.worldScale, minScale), maxScale);
 
-		// Limit panning
-		// Min world center: when 0,0 in world is placed at 0,0 on screen
-		var minWorldCenter = this.screenRect.center.clone().multiply(new Victor(this.worldScale, this.worldScale));
-		// Max world center: when N,N in world is placed at W,H on screen
-		var maxWorldCenter = new Victor(gMap.numTilesXLod0, gMap.numTilesYLod0).subtract(minWorldCenter);
+		// // Limit panning
+		// // Min world center: when 0,0 in world is placed at 0,0 on screen
+		// var minWorldCenter = this.screenRect.center.clone().multiply(new Victor(this.worldScale, this.worldScale));
+		// // Max world center: when N,N in world is placed at W,H on screen
+		// var maxWorldCenter = new Victor(gMap.numTilesXLod0, gMap.numTilesYLod0).subtract(minWorldCenter);
 
-		this.worldCenter = new Victor(
-			Math.max(minWorldCenter.x, Math.min(maxWorldCenter.x, this.worldCenter.x)),
-			Math.max(minWorldCenter.y, Math.min(maxWorldCenter.y, this.worldCenter.y)),
-		);
+		// this.worldCenter = new Victor(
+		// 	Math.max(minWorldCenter.x, Math.min(maxWorldCenter.x, this.worldCenter.x)),
+		// 	Math.max(minWorldCenter.y, Math.min(maxWorldCenter.y, this.worldCenter.y)),
+		// );
 	}
 
 	get FOVy()
@@ -459,12 +460,13 @@ class View
 	updateCamera()
 	{
 		// Calculate Z of the camera 
-		var cameraZ = (0.5*this.screenRect.size.y*this.worldScale) / Math.tan(0.5*this.FOVy);
+		var halfScreenWorldHeight = 0.5*this.screenRect.size.y*this.worldScale;
+		var cameraZ = halfScreenWorldHeight / Math.tan(0.5*this.FOVy);
 
 		// Rotate camera in 2D (ZY space) around bottom of world
-		var cameraPosZY = new Victor(cameraZ, this.worldCenter.y);
+		var cameraPosZY = new Victor(cameraZ, this.worldBottomCenter.y - halfScreenWorldHeight);
 		var cameraFwdZY = new Victor(-1.0, 0.0);
-		var planeBottomCenterPosZY = new Victor(0.0, this.worldCenter.y + this.worldScale*this.screenRect.size.y/2.0);
+		var planeBottomCenterPosZY = new Victor(0.0, this.worldBottomCenter.y);
 		var pitchAngle = gDebugSettings.cameraPitchAngle;
 		var cameraOffsetZY = cameraPosZY.clone().subtract(planeBottomCenterPosZY).rotate(pitchAngle);
 		cameraFwdZY.rotate(pitchAngle);
@@ -473,14 +475,14 @@ class View
 		cameraPosZY = planeBottomCenterPosZY.clone().add(cameraOffsetZY);
 
 		// Store camera position
-		this.cameraPos = new Victor(this.worldCenter.x, cameraPosZY.y);
+		this.cameraPos = new Victor(this.worldBottomCenter.x, cameraPosZY.y);
 		this.cameraPosZ = cameraPosZY.x;
 
 		// Calculate position that we're looking at
 		var targetPosZY = cameraPosZY.clone().add(cameraFwdZY);
 	
 		// Store target position
-		this.cameraTargetPos = new Victor(this.worldCenter.x, targetPosZY.y);
+		this.cameraTargetPos = new Victor(this.worldBottomCenter.x, targetPosZY.y);
 		this.cameraTargetPosZ = targetPosZY.x;
 		
 		// Store up axis of the camera
@@ -800,8 +802,8 @@ var gDebugSettings = {
 	mapIndex: 1,
 	loadOneByOne: false,
 	showTileMiniMap: false,
-	reliefDepth: 0.48,
-	cameraPitchAngle: 0.71
+	reliefDepth: 0.50,
+	cameraPitchAngle: 0.50
 };
 
 
@@ -1017,7 +1019,7 @@ function calcDesiredLod()
 {
 	var cTileImageSize = gMap.tileSize;
 
-	var bottomViewWorldWidth = gView.screenToWorldPos(gView.screenRect.max).x - gView.screenToWorldPos(gView.screenRect.min).x;
+	var bottomViewWorldWidth = gView.screenToWorldPos(gView.screenRect.max).x - gView.screenToWorldPos(new Victor(gView.screenRect.min.x, gView.screenRect.max.y)).x;
 
 	var numTilePixelsOnScreen = bottomViewWorldWidth * cTileImageSize;
 	var numTilePixelsPerScreenPixel = numTilePixelsOnScreen / gRenderWidth;
@@ -1093,7 +1095,7 @@ function setTileUniforms(suffix, tile)
 
 
 
-function drawTileQuad(tile, worldRect, uvRect)
+function drawTileQuad(tile, desiredLod, worldRect, uvRect)
 {
 	var right = worldRect.min.x >= gView.cameraPos.x;
 	var top = worldRect.min.y < gView.cameraPos.y;
@@ -1111,7 +1113,7 @@ function drawTileQuad(tile, worldRect, uvRect)
 	setTileUniforms('10', tile.neighbours[neighbour10]);
 	setTileUniforms('11', tile.neighbours[neighbour11]);
 
-	gTileShader.setUniform('uReliefDepth', gDebugSettings.reliefDepth);
+	gTileShader.setUniform('uReliefDepth', gDebugSettings.reliefDepth / Math.pow(2.0, desiredLod));
 	gTileShader.setUniform('uUVTopLeft', [uvRect.min.x, uvRect.min.y]);
 	gTileShader.setUniform('uUVBottomRight', [uvRect.max.x, uvRect.max.y]);
 
@@ -1142,25 +1144,24 @@ function draw()
 		var currentMouseWorldPos = gPanInitialMouseView.screenToWorldPos(getMousePos());
 		var deltaMouseWorldPos = currentMouseWorldPos.clone().subtract(gPanInitialMouseWorldPos);
 
-		var newWorldCenter = gPanInitialMouseView.worldCenter.clone().subtract(deltaMouseWorldPos);
-
-		gView.worldCenter = newWorldCenter;
+		gView.worldBottomCenter = gPanInitialMouseView.worldBottomCenter.clone().subtract(deltaMouseWorldPos);
 	}
 	if (gIsZooming)
 	{	
 		gCurrentZoomAmount += (gDesiredZoomAmount - gCurrentZoomAmount)*0.2; 
 
+		var oldZoomPivotWorldPos = gView.screenToWorldPos(gZoomInitialMouseScreenPos);
+
 		// Adjust scale
 		gView.worldScale = gZoomInitialMouseView.worldScale * gCurrentZoomAmount;
 
-		// Force limits before adjusting center, to assure we're not applying more or less scale than possible
 		gView.applyViewLimits();
+		gView.updateCamera();
 
-		// Adjust world center (to take scaling pivot into account)
-		var screenScalePivotOffset = gZoomInitialMouseScreenPos.clone().subtract(gZoomInitialMouseView.screenRect.center).multiply(new Victor(gView.worldScale, gView.worldScale));
-		var scalePivotOffset = gZoomInitialMouseWorldPos.clone().subtract(gZoomInitialMouseView.worldCenter).subtract(screenScalePivotOffset);
+		var newZoomPivotWorldPos = gView.screenToWorldPos(gZoomInitialMouseScreenPos);
 
-		gView.worldCenter = gZoomInitialMouseView.worldCenter.clone().add(scalePivotOffset);
+		// Remove panning 
+		gView.worldBottomCenter.subtract(newZoomPivotWorldPos.clone().subtract(oldZoomPivotWorldPos));
 
 		if (Math.abs(gCurrentZoomAmount - gDesiredZoomAmount) <= 0.01)		
 			gIsZooming = false;
@@ -1235,7 +1236,7 @@ function draw()
 		}
 		
 		for (var j=0; j<screenTileInfo.length; ++j)
-			drawTileQuad(visibleTile, screenTileInfo[j].worldRect, screenTileInfo[j].uvRect);
+			drawTileQuad(visibleTile, desiredLod, screenTileInfo[j].worldRect, screenTileInfo[j].uvRect);
 	}
 
 	pop();

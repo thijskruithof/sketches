@@ -418,23 +418,38 @@ class View
 	}
 
 	applyViewLimits()
-	{
-		
+	{		
 		// Limit scale
 		var minScale = 1.0/gMap.tileSize;
 		var maxScale = Math.min(gMap.numTilesXLod0 / this.screenRect.size.x, gMap.numTilesYLod0 / this.screenRect.size.y);
 		this.worldScale = Math.min(Math.max(this.worldScale, minScale), maxScale);
 
-		// // Limit panning
-		// // Min world center: when 0,0 in world is placed at 0,0 on screen
-		// var minWorldCenter = this.screenRect.center.clone().multiply(new Victor(this.worldScale, this.worldScale));
-		// // Max world center: when N,N in world is placed at W,H on screen
-		// var maxWorldCenter = new Victor(gMap.numTilesXLod0, gMap.numTilesYLod0).subtract(minWorldCenter);
+		this.updateCamera();
 
-		// this.worldCenter = new Victor(
-		// 	Math.max(minWorldCenter.x, Math.min(maxWorldCenter.x, this.worldCenter.x)),
-		// 	Math.max(minWorldCenter.y, Math.min(maxWorldCenter.y, this.worldCenter.y)),
-		// );
+		// Calculate current world space positions of the screen
+		var worldBottomLeft = this.screenToWorldPos(new Victor(0.0, this.screenRect.max.y));
+		var worldBottomRight = this.screenToWorldPos(this.screenRect.max);
+		var worldTopCenter = this.screenToWorldPos(new Victor(this.screenRect.center.x, 0.0));
+		
+		// Limit left and right
+		if (worldBottomLeft.x < 0.0)
+		{
+			this.worldBottomCenter.x -= worldBottomLeft.x;
+			worldBottomRight.x -= worldBottomLeft.x;
+		}
+		if (worldBottomRight.x > gMap.numTilesXLod0)
+			this.worldBottomCenter.x -= worldBottomRight.x - gMap.numTilesXLod0;
+		
+		// Limit top and bottom
+		if (worldTopCenter.y < 0.0)
+		{
+			this.worldBottomCenter.y -= worldTopCenter.y;
+			worldBottomRight.y -= worldTopCenter.y;
+		}
+		if (worldBottomRight.y > gMap.numTilesYLod0)
+			this.worldBottomCenter.y -= worldBottomRight.y - gMap.numTilesYLod0;
+
+		this.updateCamera();
 	}
 
 	get FOVy()

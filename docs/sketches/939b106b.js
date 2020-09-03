@@ -421,7 +421,7 @@ class View
 	{		
 		// Limit scale
 		var minScale = 1.0/gMap.tileSize;
-		var maxScale = Math.min(gMap.numTilesXLod0 / this.screenRect.size.x, gMap.numTilesYLod0 / this.screenRect.size.y);
+		var maxScale = Math.min(gMap.numTilesXLod0 / this.screenRect.size.x, Math.cos(gDebugSettings.cameraPitchAngle)*gMap.numTilesYLod0 / this.screenRect.size.y);
 		this.worldScale = Math.min(Math.max(this.worldScale, minScale), maxScale);
 
 		this.updateCamera();

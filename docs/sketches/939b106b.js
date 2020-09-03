@@ -457,7 +457,7 @@ class View
 
 	get FOVy()
 	{
-		return (Math.PI/180.0)*60.0;
+		return (Math.PI/180.0)*gDebugSettings.cameraFOV;
 	}
 
 	get near()
@@ -821,7 +821,8 @@ var gDebugSettings = {
 	loadOneByOne: false,
 	showTileMiniMap: false,
 	reliefDepth: 0.50,
-	cameraPitchAngle: 0.50
+	cameraPitchAngle: 0.50,
+	cameraFOV: 60.0,
 };
 
 
@@ -1028,8 +1029,9 @@ function setup()
 	folderStreaming.addInput(gDebugSettings, 'showTileMiniMap', {label: "Show mini map"});
 
 	var folderRender = gTweakPane.addFolder({ title: 'Rendering' });
-	folderRender.addInput(gDebugSettings, 'reliefDepth', {label: "Relief depth", min:0, max:0.50});	
+	folderRender.addInput(gDebugSettings, 'reliefDepth', {label: "Relief depth", min:0, max:0.50});		
 	folderRender.addInput(gDebugSettings, 'cameraPitchAngle', {label: "Camera angle", min:0.0, max:0.95});		
+	folderRender.addInput(gDebugSettings, 'cameraFOV', {label: "Camera FOV", min:30.0, max:120.0});			
 }
 
 

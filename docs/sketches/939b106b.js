@@ -1398,4 +1398,130 @@ function mouseWheel(event)
 	}
 
 	return false;
-  }
+}
+
+
+var gTouchStartInfos = {};
+
+var gIsPinchZooming = false;
+var gPinchZoomInitialTouchPos;
+var gPinchZoomInitialTouchesDist;
+var gPinchZoomTouchId;
+
+
+function touchStarted() 
+{
+	var mostRecentStartedTouch;
+
+	for (var i=0; i<touches.length; ++i)
+	{
+		if ((touches[i].id in gTouchStartInfos))
+			continue;
+
+		gTouchStartInfos[touches[i].id] = {
+			id: touches[i].id,
+			initialView: gView.clone(),
+			initialTouchWorldPos: gView.screenToWorldPos(new Victor(touches[i].x, touches[i].y)),
+			initialTouchScreenPos: new Victor(touches[i].x, touches[i].y)
+		};
+
+		mostRecentStartedTouch = gTouchStartInfos[touches[i].id];
+	}
+
+	// Started panning?
+	if (Object.keys(gTouchStartInfos).length == 1)
+	{
+		if (!gIsPanning)
+		{
+			var startInfo = gTouchStartInfos[Object.keys(gTouchStartInfos)[0]];
+			
+			gPanInitialMouseView = startInfo.initialView;
+			gPanInitialMouseWorldPos = startInfo.initialTouchWorldPos;
+			gIsPanning = true;
+		}		
+
+		gIsPinchZooming = false;
+	}
+	// Started zooming?
+	else if (Object.keys(gTouchStartInfos).length == 2)
+	{
+		gIsPanning = false;
+		if (!gIsPinchZooming)
+		{			
+			gPinchZoomInitialTouchPos = mostRecentStartedTouch.initialTouchScreenPos;
+			gPinchZoomInitialTouchesDist = gPanInitialMouseWorldPos.distance(gPinchZoomInitialTouchPos);
+			gPinchZoomTouchId = mostRecentStartedTouch.id;
+			gIsPinchZooming = true;
+		}
+	}
+
+	return false;
+}
+
+function touchEnded()
+{
+	var newTouchStartInfos = {};
+
+	// Copy over the start infos for only the still active touches
+	for (var i=0; i<touches.length; ++i)
+		newTouchStartInfos[touches[i].id] = gTouchStartInfos[touches[i].id];
+
+	gTouchStartInfos = newTouchStartInfos;
+
+	// Ended panning?
+	if (Object.keys(gTouchStartInfos).length == 0)
+	{
+		gIsPanning = false;
+		gIsPinchZooming = false;
+	}
+	// Ended zooming?
+	else if (Object.keys(gTouchStartInfos).length == 1 || !(gPinchZoomTouchId in gTouchStartInfos))
+	{
+		gIsPanning = true;
+		gIsPinchZooming = false;
+	}
+
+	return false;
+}
+
+function touchMoved() 
+{
+	if (gIsPinchZooming && !gIsZooming)
+	{
+		var hasTouch = false;
+		var currentPinchZoomTouchPos;
+		for (var i=0; i<touches.length; ++i)
+		{
+			if (touches[i].id == gPinchZoomTouchId)
+			{
+				hasTouch = true;
+				currentPinchZoomTouchPos = new Victor(touches[i].x, touches[i].y);
+			}
+		}
+
+		if (hasTouch)
+		{
+			var dist = currentPinchZoomTouchPos.distance(gPinchZoomInitialTouchPos);
+			if (dist > 50.0)
+			{
+				var touchesDistDelta = gPanInitialMouseWorldPos.distance(currentPinchZoomTouchPos) - gPinchZoomInitialTouchesDist;
+
+				var maxZoomAmount = 0.75;
+				var zoom_delta = Math.max(-maxZoomAmount, Math.min(maxZoomAmount, touchesDistDelta / 200.0));
+		
+				gCurrentZoomAmount = 1;		
+				gDesiredZoomAmount = pow(2, -zoom_delta);
+		
+				gZoomInitialMouseView = gView.clone();
+				gZoomInitialMouseScreenPos = gPanInitialMouseView;
+				gZoomInitialMouseWorldPos = gView.screenToWorldPos(gZoomInitialMouseScreenPos);
+				
+				gIsZooming = true;
+				
+				gPinchZoomInitialTouchPos = currentPinchZoomTouchPos.clone();
+			}
+		}
+	}
+
+	return false;
+}

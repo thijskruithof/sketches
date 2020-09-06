@@ -1001,15 +1001,6 @@ var gNullTileRect;
 
 // View adjustment
 var gPanZoomInteraction;
-// var gIsPanning = false;
-// var gPanInitialMouseWorldPos;
-// var gPanInitialMouseView;
-// var gIsZooming = false;
-// var gDesiredZoomAmount = 0;
-// var gCurrentZoomAmount = 0;
-// var gZoomInitialMouseScreenPos;
-// var gZoomInitialMouseWorldPos;
-// var gZoomInitialMouseView;
 
 // Rendering
 var gTilesOffscreenGraphics;
@@ -1090,28 +1081,35 @@ function createTileChildrenRecursive(tile)
 }
 
 
+function canStartLoadTileImage()
+{
+	var maxNumSimultaneousImagesBeingLoaded = gDebugSettings.loadOneByOne ? 1 : 6;
+
+	return gNumTileImagesBeingLoaded < maxNumSimultaneousImagesBeingLoaded;
+}
+
 
 function updateTileLoading()
 {
-	if (gDebugSettings.loadOneByOne && gNumTileImagesBeingLoaded > 0)
-		return;
-
 	var tilesToLoad = getTilesToLoad()
 
 	for (var i=0; i<tilesToLoad.length; ++i)
 	{
 		var tile = tilesToLoad[i];
 
+		if (!canStartLoadTileImage())
+			return;
+
 		// Do we have to load the albedo?
 		if (tile.albedoImage.loadingState == ETileLoadingState.unloaded)
 			tile.albedoImage.startLoading();
 
+		if (!canStartLoadTileImage())
+			return;
+
 		// Do we have to load the elevation?
 		if (tile.elevationImage.loadingState == ETileLoadingState.unloaded)
 			tile.elevationImage.startLoading();
-
-		if (gDebugSettings.loadOneByOne)
-		 	break;
 	}
 }
 

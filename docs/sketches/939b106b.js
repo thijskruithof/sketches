@@ -693,6 +693,15 @@ class Tile
 }
 
 
+class BorderCell
+{
+	constructor(worldRect)
+	{
+		this.worldRect = worldRect.clone();
+	}
+}
+
+
 class TileGrid
 {
 	constructor(lod, numTilesPerAxis)
@@ -702,6 +711,18 @@ class TileGrid
 		this.tiles = [];
 		for (var x=0; x<numTilesPerAxis*numTilesPerAxis; ++x)
 			this.tiles.push(null);
+
+		this.borderCellsLeft = [];
+		this.borderCellsRight = [];
+		var tileSize = pow(2, lod);
+		for (var y=0; y<numTilesPerAxis; ++y)
+		{
+			for (var x=0; x<numTilesPerAxis; ++x)
+			{
+				this.borderCellsLeft[y*numTilesPerAxis+x] = new BorderCell(new Rect(new Victor(-(1+x)*tileSize, y*tileSize), new Victor(-x*tileSize, (y+1)*tileSize)));
+				this.borderCellsRight[y*numTilesPerAxis+x] = new BorderCell(new Rect(new Victor((numTilesPerAxis+x)*tileSize, y*tileSize), new Victor((numTilesPerAxis+x+1)*tileSize, (y+1)*tileSize)));
+			}
+		}		
 	}
 
 	addTile(tile)
@@ -738,13 +759,16 @@ class TileGrid
 
 	}
 
-	getTilesInFrustum(frustum)
+	getTilesAndBorderCellsInFrustum(frustum)
 	{
 		var worldBoundsRect = frustum.worldBoundsRect;
 
 		var tileSize = pow(2, this.lod);
 		var tl = new Victor(Math.floor(worldBoundsRect.min.x/tileSize), Math.floor(worldBoundsRect.min.y/tileSize));
 		var br = new Victor(Math.floor(worldBoundsRect.max.x/tileSize), Math.floor(worldBoundsRect.max.y/tileSize));
+
+		var numBorderCellsLeft = (tl.x < 0) ? (-tl.x) : 0;
+		var numBorderCellsRight = (br.x >= this.numTilesPerAxis) ? (br.x - (this.numTilesPerAxis-1)) : 0;
 
 		// Clamp window to valid range
 		tl.x = Math.min(this.numTilesPerAxis-1, Math.max(0, tl.x));
@@ -756,7 +780,7 @@ class TileGrid
 		var numCellsX = (br.x - tl.x)+1;
 
 		// Gather all tiles that overlap our frustum
-		var result = [];
+		var visibleTiles = [];
 		for (var y=tl.y; y<=br.y; ++y)
 		{
 			for (var x=tl.x; x<=br.x; ++x)
@@ -764,11 +788,35 @@ class TileGrid
 				var t = this.tiles[y*this.numTilesPerAxis+x];
 
 				if (frustum.overlaps(t.worldRect))
-					result.push(t);
+					visibleTiles.push(t);
 			}
 		}
 
-		return result;
+		// Gather all border cells, on the left and the right
+		var borderCells = [];
+		for (var x=0; x<numBorderCellsLeft; ++x)
+		{
+			for (var y=tl.y; y<=br.y; ++y)				
+			{
+				var c = this.borderCellsLeft[y*this.numTilesPerAxis+x];
+				
+				if (frustum.overlaps(c.worldRect))
+					borderCells.push(c);
+			}
+		}
+		for (var x=0; x<numBorderCellsRight; ++x)
+		{
+			for (var y=tl.y; y<=br.y; ++y)				
+			{
+				var c = this.borderCellsRight[y*this.numTilesPerAxis+x];
+				
+				if (frustum.overlaps(c.worldRect))
+					borderCells.push(c);
+			}
+		}
+
+
+		return { tiles: visibleTiles, borderCells: borderCells };
 	}
 }
 
@@ -1248,7 +1296,9 @@ function setup()
 	var folderRender = gTweakPane.addFolder({ title: 'Rendering' });
 	folderRender.addInput(gDebugSettings, 'reliefDepth', {label: "Relief depth", min:0, max:0.50});		
 	folderRender.addInput(gDebugSettings, 'cameraPitchAngle', {label: "Camera angle", min:0.0, max:0.95});		
-	folderRender.addInput(gDebugSettings, 'cameraFOV', {label: "Camera FOV", min:30.0, max:120.0});			
+	folderRender.addInput(gDebugSettings, 'cameraFOV', {label: "Camera FOV", min:30.0, max:120.0});		
+	
+	console.log("939b106b.js: Successfully loaded. Enjoy!");
 }
 
 
@@ -1362,6 +1412,25 @@ function drawTileQuad(tile, desiredLod, worldRect, uvRect)
 }
 
 
+function drawBorderCell(borderCell, desiredLod)
+{
+	setTileUniforms('00', null);
+	setTileUniforms('01', null);
+	setTileUniforms('10', null);
+	setTileUniforms('11', null);
+
+	gTileShader.setUniform('uReliefDepth', gDebugSettings.reliefDepth / Math.pow(2.0, desiredLod));
+	gTileShader.setUniform('uUVTopLeft', [0.0, 0.0]);
+	gTileShader.setUniform('uUVBottomRight', [1.0, 1.0]);
+
+	// Draw our border cell
+	push();
+	translate(borderCell.worldRect.center.x, borderCell.worldRect.center.y);
+	plane(borderCell.worldRect.size.x, borderCell.worldRect.size.y);
+	pop();
+}
+
+
 function draw() 
 {
 	preDraw();
@@ -1393,13 +1462,14 @@ function draw()
 
 	var desiredLod = calcDesiredLod();
 
-	// Determine which tiles are in our frustum
-	var visibleTiles = gTileGrids[desiredLod].getTilesInFrustum(gView.frustum);
+	// Determine which tiles and border cells are in our frustum
+	var visibleTilesAndBorderCells = gTileGrids[desiredLod].getTilesAndBorderCellsInFrustum(gView.frustum);
+
 
 	// Render all tiles within the quadrant
-	for (var i=0; i<visibleTiles.length; ++i)
+	for (var i=0; i<visibleTilesAndBorderCells.tiles.length; ++i)
 	{	
-		var visibleTile = visibleTiles[i];
+		var visibleTile = visibleTilesAndBorderCells.tiles[i];
 
 		if (!visibleTile.valid)
 			continue;
@@ -1447,6 +1517,15 @@ function draw()
 			drawTileQuad(visibleTile, desiredLod, screenTileInfo[j].worldRect, screenTileInfo[j].uvRect);
 	}
 
+	// Render all border cells
+	for (var i=0; i<visibleTilesAndBorderCells.borderCells.length; ++i)
+	{
+		var borderCell = visibleTilesAndBorderCells.borderCells[i];
+
+		drawBorderCell(borderCell, desiredLod);
+	}
+
+
 	pop();
 
 	updateTileLoading();	
@@ -1457,7 +1536,7 @@ function draw()
 	visitTileChildren(gRootTile, tile => { if (tile.albedoImage.loadingState == ETileLoadingState.loaded) numTilesLoaded++;});
 	
 	gDebugInfo.desiredLod = desiredLod;
-	gDebugInfo.numTilesVisible = visibleTiles.length;
+	gDebugInfo.numTilesVisible = visibleTilesAndBorderCells.tiles.length;
 	gDebugInfo.numTilesLoaded = numTilesLoaded;
 	gDebugInfo.numTilesLoading = gNumTileImagesBeingLoaded;
 

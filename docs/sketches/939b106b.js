@@ -781,6 +781,13 @@ class InteractionPoint
 		this.worldPos = gView.screenToWorldPos(screenPos);
 		this.view = gView.clone();
 	}
+
+	clone()
+	{
+		var newPoint = new InteractionPoint(this.screenPos);
+		newPoint.view = this.view.clone();
+		return newPoint;
+	}
 }
 
 
@@ -800,6 +807,10 @@ class PanZoomInteraction
 		
 		this.isTouchPanning = false;
 		this.touchPanTouchInfo = null;
+
+		this.isTouchZooming = false;
+		this.touchZoomTouchInfoA = null;
+		this.touchZoomTouchInfoB = null;
 	}
 	
 	updateView()
@@ -851,6 +862,20 @@ class PanZoomInteraction
 			// Did we reach the desired zoom amount? Then stop zooming
 			if (Math.abs(this.mouseZoomCurrentAmount - this.mouseZoomDesiredAmount ) <= 0.01)		
 				this.isMouseZooming = false;			
+		}
+
+		// Zooming with touch? (Pinch zoom)
+		if (this.isTouchZooming)
+		{
+			var initialWorldDelta = this.touchZoomTouchInfoB.initialPoint.worldPos.clone().subtract(this.touchZoomTouchInfoA.initialPoint.worldPos);
+			var initialWorldDistance = initialWorldDelta.length();
+			var currentWorldDelta = this.touchZoomTouchInfoB.currentPoint.worldPos.clone().subtract(this.touchZoomTouchInfoA.currentPoint.worldPos);
+			var currentWorldDistance = currentWorldDelta.length();
+
+			var scaleFactor = (currentWorldDistance > 0.0) ? (initialWorldDistance / currentWorldDistance) : 1.0;
+
+			// Adjust scale
+			gView.worldScale = this.touchZoomTouchInfoA.initialPoint.view.worldScale * Math.pow(scaleFactor, 0.7);
 		}
 
 		gView.applyViewLimits();	
@@ -910,7 +935,18 @@ class PanZoomInteraction
 			};
 		}
 
+		// Determine if we're panning (and with which touch)
 		this.isTouchPanning = (Object.keys(this.touchInfos).length == 1);
+		if (this.isTouchPanning)
+			this.touchPanTouchInfo = this.touchInfos[Object.keys(this.touchInfos)[0]];
+
+		// Determine if we're zooming (and with which two touches)
+		this.isTouchZooming = (Object.keys(this.touchInfos).length == 2);
+		if (this.isTouchZooming)
+		{
+			this.touchZoomTouchInfoA = this.touchInfos[Object.keys(this.touchInfos)[0]];
+			this.touchZoomTouchInfoB = this.touchInfos[Object.keys(this.touchInfos)[1]];
+		}
 	}
 
 	touchMoved()
@@ -928,6 +964,26 @@ class PanZoomInteraction
 			newTouchInfos[touches[i].id] = this.touchInfos[touches[i].id];
 
 		this.touchInfos = newTouchInfos;
+
+		var wasZooming = this.isTouchZooming;
+
+		// Determine if we're panning (and with which touch)
+		this.isTouchPanning = (Object.keys(this.touchInfos).length == 1);
+		if (this.isTouchPanning)
+		{
+			this.touchPanTouchInfo = this.touchInfos[Object.keys(this.touchInfos)[0]];
+
+			if (wasZooming)
+				this.touchPanTouchInfo.initialPoint = this.touchPanTouchInfo.currentPoint.clone();
+		}
+
+		// Determine if we're zooming (and with which two touches)
+		this.isTouchZooming = (Object.keys(this.touchInfos).length == 2);
+		if (this.isTouchZooming)
+		{
+			this.touchZoomTouchInfoA = this.touchInfos[Object.keys(this.touchInfos)[0]];
+			this.touchZoomTouchInfoB = this.touchInfos[Object.keys(this.touchInfos)[1]];
+		}			
 	}
 }
 
@@ -1527,62 +1583,9 @@ function mouseWheel(event)
 	return false;
 }
 
-
-var gTouchStartInfos = {};
-
-var gIsPinchZooming = false;
-var gPinchZoomInitialTouchPos;
-var gPinchZoomInitialTouchesDist;
-var gPinchZoomTouchId;
-
-
 function touchStarted() 
 {
 	gPanZoomInteraction.touchStarted();
-
-	// var mostRecentStartedTouch;
-
-	// for (var i=0; i<touches.length; ++i)
-	// {
-	// 	if ((touches[i].id in gTouchStartInfos))
-	// 		continue;
-
-	// 	gTouchStartInfos[touches[i].id] = {
-	// 		id: touches[i].id,
-	// 		initialView: gView.clone(),
-	// 		initialTouchWorldPos: gView.screenToWorldPos(new Victor(touches[i].x, touches[i].y)),
-	// 		initialTouchScreenPos: new Victor(touches[i].x, touches[i].y)
-	// 	};
-
-	// 	mostRecentStartedTouch = gTouchStartInfos[touches[i].id];
-	// }
-
-	// // Started panning?
-	// if (Object.keys(gTouchStartInfos).length == 1)
-	// {
-	// 	if (!gIsPanning)
-	// 	{
-	// 		var startInfo = gTouchStartInfos[Object.keys(gTouchStartInfos)[0]];
-			
-	// 		gPanInitialMouseView = startInfo.initialView;
-	// 		gPanInitialMouseWorldPos = startInfo.initialTouchWorldPos;
-	// 		gIsPanning = true;
-	// 	}		
-
-	// 	gIsPinchZooming = false;
-	// }
-	// // Started zooming?
-	// else if (Object.keys(gTouchStartInfos).length == 2)
-	// {
-	// 	gIsPanning = false;
-	// 	if (!gIsPinchZooming)
-	// 	{			
-	// 		gPinchZoomInitialTouchPos = mostRecentStartedTouch.initialTouchScreenPos;
-	// 		gPinchZoomInitialTouchesDist = gPanInitialMouseWorldPos.distance(gPinchZoomInitialTouchPos);
-	// 		gPinchZoomTouchId = mostRecentStartedTouch.id;
-	// 		gIsPinchZooming = true;
-	// 	}
-	// }
 
 	return false;
 }
@@ -1591,70 +1594,12 @@ function touchEnded()
 {
 	gPanZoomInteraction.touchEnded();
 
-	// var newTouchStartInfos = {};
-
-	// // Copy over the start infos for only the still active touches
-	// for (var i=0; i<touches.length; ++i)
-	// 	newTouchStartInfos[touches[i].id] = gTouchStartInfos[touches[i].id];
-
-	// gTouchStartInfos = newTouchStartInfos;
-
-	// // Ended panning?
-	// if (Object.keys(gTouchStartInfos).length == 0)
-	// {
-	// 	gIsPanning = false;
-	// 	gIsPinchZooming = false;
-	// }
-	// // Ended zooming?
-	// else if (Object.keys(gTouchStartInfos).length == 1 || !(gPinchZoomTouchId in gTouchStartInfos))
-	// {
-	// 	gIsPanning = true;
-	// 	gIsPinchZooming = false;
-	// }
-
 	return false;
 }
 
 function touchMoved() 
 {
 	gPanZoomInteraction.touchMoved();
-
-	// if (gIsPinchZooming && !gIsZooming)
-	// {
-	// 	var hasTouch = false;
-	// 	var currentPinchZoomTouchPos;
-	// 	for (var i=0; i<touches.length; ++i)
-	// 	{
-	// 		if (touches[i].id == gPinchZoomTouchId)
-	// 		{
-	// 			hasTouch = true;
-	// 			currentPinchZoomTouchPos = new Victor(touches[i].x, touches[i].y);
-	// 		}
-	// 	}
-
-	// 	if (hasTouch)
-	// 	{
-	// 		var dist = currentPinchZoomTouchPos.distance(gPinchZoomInitialTouchPos);
-	// 		if (dist > 50.0)
-	// 		{
-	// 			var touchesDistDelta = gPanInitialMouseWorldPos.distance(currentPinchZoomTouchPos) - gPinchZoomInitialTouchesDist;
-
-	// 			var maxZoomAmount = 0.75;
-	// 			var zoom_delta = Math.max(-maxZoomAmount, Math.min(maxZoomAmount, touchesDistDelta / 200.0));
-		
-	// 			gCurrentZoomAmount = 1;		
-	// 			gDesiredZoomAmount = pow(2, -zoom_delta);
-		
-	// 			gZoomInitialMouseView = gView.clone();
-	// 			gZoomInitialMouseScreenPos = gPanInitialMouseView;
-	// 			gZoomInitialMouseWorldPos = gView.screenToWorldPos(gZoomInitialMouseScreenPos);
-				
-	// 			gIsZooming = true;
-				
-	// 			gPinchZoomInitialTouchPos = currentPinchZoomTouchPos.clone();
-	// 		}
-	// 	}
-	// }
 
 	return false;
 }

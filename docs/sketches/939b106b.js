@@ -1586,20 +1586,14 @@ function mouseWheel(event)
 function touchStarted() 
 {
 	gPanZoomInteraction.touchStarted();
-
-	return false;
 }
 
 function touchEnded()
 {
 	gPanZoomInteraction.touchEnded();
-
-	return false;
 }
 
 function touchMoved() 
 {
 	gPanZoomInteraction.touchMoved();
-
-	return false;
 }

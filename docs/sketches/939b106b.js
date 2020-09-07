@@ -1361,7 +1361,7 @@ function getTileElevationImageAndTileRect(tile)
 	if (tile != null && tile.elevationImage.loadingState == ETileLoadingState.loaded)
 		return { image: tile.elevationImage.image, tileRect: imageRect };
 	else
-		return { image: gNullTileAlbedoImage, tileRect: gNullTileRect };
+		return { image: gNullTileElevationImage, tileRect: gNullTileRect };
 }
 
 

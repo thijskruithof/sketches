@@ -2,8 +2,11 @@
 
 #include <math.h>
 
-#define min(a,b) (((a) <= (b)) ? (a) : (b))
-#define max(a,b) (((a) >= (b)) ? (a) : (b))
+template <typename T>
+T min(T a, T b) { return (a <= b) ? a : b; }
+
+template <typename T>
+T max(T a, T b) { return (a >= b) ? a : b; }
 
 #define DEG_TO_RAD(x) ((x)*M_PI/180.0f)
 
@@ -44,6 +47,11 @@ public:
     Vec3 operator *(float scalar) const
     {
         return Vec3(mX*scalar, mY*scalar, mZ*scalar);
+    }
+
+    Vec3 operator +(const Vec3& other) const
+    {
+        return Vec3(mX + other.mX, mY + other.mY, mZ + other.mZ);
     }
 
     Vec3& operator +=(const Vec3& other)

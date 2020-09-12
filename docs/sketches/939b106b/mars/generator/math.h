@@ -8,6 +8,9 @@ T min(T a, T b) { return (a <= b) ? a : b; }
 template <typename T>
 T max(T a, T b) { return (a >= b) ? a : b; }
 
+template <typename T>
+T abs(T a) { return (a < 0) ? -a : a; }
+
 #define DEG_TO_RAD(x) ((x)*M_PI/180.0f)
 
 #define M_PI 3.1415926535897932384626433832795f

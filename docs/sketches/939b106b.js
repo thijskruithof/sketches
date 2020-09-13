@@ -1296,7 +1296,7 @@ function setup()
 	var folderRender = gTweakPane.addFolder({ title: 'Rendering' });
 	folderRender.addInput(gDebugSettings, 'reliefDepth', {label: "Relief depth", min:0, max:0.50});		
 	folderRender.addInput(gDebugSettings, 'cameraPitchAngle', {label: "Camera angle", min:0.0, max:0.95});		
-	folderRender.addInput(gDebugSettings, 'cameraFOV', {label: "Camera FOV", min:30.0, max:120.0});		
+	// folderRender.addInput(gDebugSettings, 'cameraFOV', {label: "Camera FOV", min:30.0, max:120.0});		
 	
 	console.log("939b106b.js: Successfully loaded. Enjoy!");
 }

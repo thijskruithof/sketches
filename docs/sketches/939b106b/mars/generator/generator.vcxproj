@@ -150,12 +150,14 @@
     <ClInclude Include="lodepng.h" />
     <ClInclude Include="math.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="toojpeg\toojpeg.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="generator.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Disabled</Optimization>
     </ClCompile>
     <ClCompile Include="lodepng.cpp" />
+    <ClCompile Include="toojpeg\toojpeg.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

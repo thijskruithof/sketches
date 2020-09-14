@@ -24,12 +24,18 @@
     <ClInclude Include="math.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="toojpeg\toojpeg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="generator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="lodepng.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="toojpeg\toojpeg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
